@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="CRLX1Q — Software Developer. Масштабируемая архитектура, нейросети и эстетичные интерфейсы.">
     <meta name="theme-color" content="#030303">
+    <link rel="icon" type="image/png" href="/logo.png">
     <title>CRLX1Q | Software Developer</title>
     
     <!-- Theme Persistence & System Preference -->
@@ -490,9 +491,214 @@
         #boot-progress-label { margin-top: 6px; font-size: 10px; color: #444; display: flex; justify-content: space-between; }
         #boot-pct { color: #fff; }
 
+        /* Burger Menu */
+        .burger-btn {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 36px;
+            height: 36px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 6px;
+            cursor: pointer;
+            gap: 5px;
+            padding: 7px;
+            transition: background 0.2s, border-color 0.2s;
+            z-index: 60;
+            position: relative;
+        }
+        .burger-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+        .burger-btn span {
+            display: block;
+            width: 18px;
+            height: 1.5px;
+            background: #fff;
+            border-radius: 2px;
+            transition: transform 0.3s ease, opacity 0.2s ease;
+        }
+        .burger-btn.active span:nth-child(1) { transform: rotate(45deg) translate(4.5px, 4.5px); }
+        .burger-btn.active span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+        .burger-btn.active span:nth-child(3) { transform: rotate(-45deg) translate(4.5px, -4.5px); }
+
+        .mobile-menu {
+            position: fixed;
+            inset: 0;
+            z-index: 55;
+            background: rgba(3,3,3,0.97);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-12px);
+            transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1), visibility 0s 0.4s;
+            pointer-events: none;
+        }
+        .mobile-menu.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+            transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1), visibility 0s 0s;
+        }
+        .mobile-menu a, .mobile-menu-lang-wrap {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease, color 0.2s;
+        }
+        .mobile-menu.open a, .mobile-menu.open .mobile-menu-lang-wrap {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .mobile-menu.open a:nth-child(1) { transition-delay: 0.06s; }
+        .mobile-menu.open a:nth-child(3) { transition-delay: 0.1s; }
+        .mobile-menu.open a:nth-child(5) { transition-delay: 0.14s; }
+        .mobile-menu.open a:nth-child(7) { transition-delay: 0.18s; }
+        .mobile-menu.open .mobile-menu-lang-wrap { transition-delay: 0.24s; }
+        .mobile-menu.open .mobile-menu-footer { transition-delay: 0.3s; }
+        .mobile-menu a {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: #888;
+            padding: 1.2rem 2rem;
+            text-decoration: none;
+        }
+        .mobile-menu a:hover, .mobile-menu a:active { color: #fff; transform: translateX(6px); }
+        .mobile-menu .mobile-menu-divider {
+            width: 40px;
+            height: 1px;
+            background: rgba(255,255,255,0.1);
+            margin: 0.5rem 0;
+        }
+        .mobile-menu .mobile-menu-lang-wrap {
+            margin-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+        }
+        .mobile-menu .mobile-menu-lang-btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: #555;
+            background: transparent;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: color 0.2s, background 0.2s;
+        }
+        .mobile-menu .mobile-menu-lang-btn.active {
+            color: #fff;
+            background: rgba(255,255,255,0.12);
+        }
+        .mobile-menu .mobile-menu-lang-btn:not(.active):hover {
+            color: #aaa;
+        }
+        .mobile-menu .mobile-menu-footer {
+            margin-top: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .mobile-menu.open .mobile-menu-footer {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .mobile-menu .mobile-menu-footer img {
+            width: 28px;
+            height: 28px;
+            opacity: 0.5;
+        }
+        .mobile-menu .mobile-menu-footer span {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: #444;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        /* Nav logo image */
+        .nav-logo-img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            flex-shrink: 0;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+        .nav-logo-img:hover { opacity: 1; }
+
+        /* SPA Page Overlays */
+        .spa-page {
+            display: none;
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+        .spa-page.active { display: block; }
+        .spa-page-header {
+            padding: 3rem 1.5rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .spa-page-header h1 {
+            font-family: 'Major Mono Display', 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7);
+        }
+        .spa-page-header p {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+        .spa-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            text-decoration: none;
+            margin-bottom: 1.5rem;
+        }
+        .spa-back-btn:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+
         @media (max-width: 640px) {
             nav { padding: 0.75rem 1rem; } 
             nav .font-mono.text-sm { font-size: 0.85rem; } 
+            .burger-btn { display: flex; }
+            .nav-links { display: none !important; }
             section#stats, section#stack { padding: 1rem 0.75rem; }
             section#projects, section#blog, section#board { padding: 2rem 0.75rem; }
             .project-card { padding: 1.25rem; } .project-card h4 { font-size: 1.25rem; } .project-card .text-4xl { font-size: 1.75rem; }
@@ -503,6 +709,7 @@
             .win11-tab { min-width: 160px; }
             .ascii-container { max-width: 95vw; overflow: hidden; }
             .nav-now-building { display: none; }
+            .nav-logo-img { width: 22px; height: 22px; }
         }
         @media (hover: none), (pointer: coarse) { body { cursor: auto; } #cursor-dot, #cursor-outline { display: none !important; } }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } .marquee-track { animation: none; } .fade-up { opacity: 1; transform: none; } }
@@ -723,7 +930,8 @@
 
     <!-- Navigation -->
     <nav id="navbar" class="fixed w-full top-0 z-50 px-6 py-4 flex justify-between items-center pointer-events-auto">
-        <a href="#" id="nav-brand" class="font-mono text-sm tracking-widest uppercase flex items-center gap-3" aria-label="CRL.X1Q()">
+        <a href="/" id="nav-brand" class="font-mono text-sm tracking-widest uppercase flex items-center gap-3" aria-label="CRL.X1Q()" onclick="if(window.__spaNav){event.preventDefault();window.__spaNav('/');}">
+            <img src="/logo.png" alt="CRLX1Q" class="nav-logo-img theme-protect">
             <span id="nav-brand-text">CRL.X1Q()</span>
             <span class="nav-now-building"><span class="lang-en">now building: UMA</span><span class="lang-ru">сейчас в работе: UMA</span></span>
         </a>
@@ -764,11 +972,11 @@
             scheduleGlitch();
         })();
         </script>
-        <div class="flex gap-4 md:gap-6 font-mono text-xs uppercase tracking-wider items-center">
-            <a href="#projects" class="hover:text-white text-grayish transition-colors"><span class="lang-en">Projects</span><span class="lang-ru">Проекты</span></a>
-            <a href="#blog" class="hover:text-white text-grayish transition-colors hidden sm:inline"><span class="lang-en">Notes</span><span class="lang-ru">Заметки</span></a>
-            <a href="#board" class="hover:text-white text-grayish transition-colors hidden sm:inline"><span class="lang-en">Board</span><span class="lang-ru">Доска</span></a>
-            <a href="#contact" class="hover:text-white text-grayish transition-colors"><span class="lang-en">Contact</span><span class="lang-ru">Контакты</span></a>
+        <div class="nav-links flex gap-4 md:gap-6 font-mono text-xs uppercase tracking-wider items-center">
+            <a href="/#projects" class="hover:text-white text-grayish transition-colors nav-main-link"><span class="lang-en">Projects</span><span class="lang-ru">Проекты</span></a>
+            <a href="/notes" class="hover:text-white text-grayish transition-colors nav-main-link" onclick="if(window.__spaNav){event.preventDefault();window.__spaNav('/notes');}"><span class="lang-en">Notes</span><span class="lang-ru">Заметки</span></a>
+            <a href="/board" class="hover:text-white text-grayish transition-colors nav-main-link" onclick="if(window.__spaNav){event.preventDefault();window.__spaNav('/board');}"><span class="lang-en">Board</span><span class="lang-ru">Доска</span></a>
+            <a href="/#contact" class="hover:text-white text-grayish transition-colors nav-main-link"><span class="lang-en">Contact</span><span class="lang-ru">Контакты</span></a>
 
             <!-- Language Switcher -->
             <div id="lang-switcher" class="flex items-center p-[2px] bg-black/40 border border-white/10 rounded ml-2">
@@ -823,7 +1031,70 @@
                 <kbd>Ctrl</kbd><kbd>K</kbd>
             </button>
         </div>
+
+        <!-- Burger Menu Button (Mobile) -->
+        <button id="burger-btn" class="burger-btn" aria-label="Open menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu" class="mobile-menu">
+        <a href="/#projects" onclick="closeMobileMenu();"><span class="lang-en">Projects</span><span class="lang-ru">Проекты</span></a>
+        <div class="mobile-menu-divider"></div>
+        <a href="/notes" onclick="event.preventDefault();closeMobileMenu();if(window.__spaNav)window.__spaNav('/notes');"><span class="lang-en">Notes</span><span class="lang-ru">Заметки</span></a>
+        <div class="mobile-menu-divider"></div>
+        <a href="/board" onclick="event.preventDefault();closeMobileMenu();if(window.__spaNav)window.__spaNav('/board');"><span class="lang-en">Board</span><span class="lang-ru">Доска</span></a>
+        <div class="mobile-menu-divider"></div>
+        <a href="/#contact" onclick="closeMobileMenu();"><span class="lang-en">Contact</span><span class="lang-ru">Контакты</span></a>
+        <!-- Language Switcher -->
+        <div class="mobile-menu-lang-wrap">
+            <button class="mobile-menu-lang-btn" data-mlang="en" onclick="setMobileLang('en')">EN</button>
+            <button class="mobile-menu-lang-btn" data-mlang="ru" onclick="setMobileLang('ru')">RU</button>
+        </div>
+        <div class="mobile-menu-footer">
+            <img src="/logo.png" alt="" class="theme-protect">
+            <span>CRLX1Q</span>
+        </div>
+    </div>
+    <script>
+    function closeMobileMenu() {
+        document.getElementById('mobile-menu').classList.remove('open');
+        document.getElementById('burger-btn').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    document.getElementById('burger-btn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('mobile-menu');
+        const isOpen = menu.classList.toggle('open');
+        this.classList.toggle('active', isOpen);
+        document.body.style.overflow = isOpen ? 'hidden' : '';
+    });
+    // Close on clicking the overlay background (not links/buttons)
+    document.getElementById('mobile-menu').addEventListener('click', function(e) {
+        if (e.target === this) closeMobileMenu();
+    });
+    // Language switcher for mobile menu
+    function setMobileLang(lang) {
+        // Trigger main lang switcher
+        const btns = document.querySelectorAll('.lang-btn');
+        btns.forEach(b => {
+            if (b.dataset.lang === lang && !b.classList.contains('active')) b.click();
+        });
+        syncMobileLangBtns(lang);
+    }
+    function syncMobileLangBtns(lang) {
+        document.querySelectorAll('.mobile-menu-lang-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.mlang === lang);
+        });
+    }
+    // Sync on lang change
+    window.addEventListener('lang-changed', (e) => syncMobileLangBtns(e.detail));
+    // Init sync
+    syncMobileLangBtns(document.documentElement.lang || 'en');
+    </script>
 
     <!-- Content Wrap -->
     <div id="content-wrap" style="position:relative;z-index:2">
@@ -974,7 +1245,7 @@
             </a>
         </div>
         <div class="mt-6 text-right">
-            <a href="#" class="font-mono text-xs uppercase tracking-widest text-gray-500 hover:text-white transition-colors"><span class="lang-en">View all notes -></span><span class="lang-ru">Все заметки -></span></a>
+            <a href="/notes" onclick="event.preventDefault();if(window.__spaNav)window.__spaNav('/notes');" class="font-mono text-xs uppercase tracking-widest text-gray-500 hover:text-white transition-colors"><span class="lang-en">View all notes -></span><span class="lang-ru">Все заметки -></span></a>
         </div>
     </section>
 
@@ -1013,8 +1284,11 @@
     <!-- Footer -->
     <footer id="contact" class="py-12 border-t border-gray-900 z-10 relative mt-10">
         <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div class="flex flex-col gap-2">
-                <div class="font-mono text-gray-500 text-sm">© <span id="footer-year">2026</span> CRLX1Q. <span class="lang-en">All rights reserved.</span><span class="lang-ru">Все права защищены.</span></div>
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center gap-3">
+                    <img src="/logo.png" alt="CRLX1Q" class="theme-protect" style="width:32px;height:32px;object-fit:contain;opacity:0.6;transition:opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                    <div class="font-mono text-gray-500 text-sm">© <span id="footer-year">2026</span> CRLX1Q. <span class="lang-en">All rights reserved.</span><span class="lang-ru">Все права защищены.</span></div>
+                </div>
                 <div class="flex items-center gap-2 font-mono text-[10px] text-gray-700 tracking-widest uppercase select-none">
                     <span class="inline-flex items-center gap-1.5 border border-gray-800 rounded px-2 py-0.5 hover:border-gray-600 hover:text-gray-500 transition-colors duration-300 cursor-default">
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="opacity-60"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
@@ -1039,6 +1313,138 @@
 
     </div><!-- /content-wrap -->
 
+    <!-- SPA: Notes Page -->
+    <div id="spa-notes" class="spa-page">
+        <div class="spa-page-header">
+            <a href="/" class="spa-back-btn" onclick="event.preventDefault();if(window.__spaNav)window.__spaNav('/');">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                <span class="lang-en">Back</span><span class="lang-ru">Назад</span>
+            </a>
+            <h1><span class="lang-en">/ notes & thoughts</span><span class="lang-ru">/ заметки и мысли</span></h1>
+            <p><span class="lang-en">Technical articles, dev logs, and random thoughts</span><span class="lang-ru">Технические статьи, девлоги и случайные мысли</span></p>
+        </div>
+        <div class="max-w-[900px] mx-auto px-6 pb-24">
+            <div class="grid grid-cols-1 gap-4">
+                <!-- Note 1 -->
+                <a href="#" class="block p-6 bg-[#080808] border border-white/5 hover:border-white/20 transition-colors group relative overflow-hidden">
+                    <span class="absolute top-0 left-0 w-1 h-full bg-gray-800 group-hover:bg-white transition-colors"></span>
+                    <div class="font-mono text-[10px] text-gray-500 uppercase tracking-widest mb-3 flex gap-4">
+                        <span>2026.05.28</span>
+                        <span>5 min read</span>
+                    </div>
+                    <h4 class="text-lg font-medium text-white mb-2 group-hover:text-gray-200">
+                        <span class="lang-en">UMA Architecture: How we achieved 0ms latency</span>
+                        <span class="lang-ru">Архитектура UMA: как мы добились 0ms latency</span>
+                    </h4>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        <span class="lang-en">A breakdown of technical solutions, custom WebSockets, and database optimization to ensure instant message delivery. We dive deep into the architecture decisions that made UMA's real-time communication nearly instantaneous.</span>
+                        <span class="lang-ru">Разбор технических решений, кастомных вебсокетов и оптимизации базы данных для обеспечения мгновенной доставки сообщений. Погружение в архитектурные решения, которые сделали коммуникацию в UMA практически мгновенной.</span>
+                    </p>
+                    <div class="flex gap-3 mt-4">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">WebSockets</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Architecture</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Performance</span>
+                    </div>
+                </a>
+                <!-- Note 2 -->
+                <a href="#" class="block p-6 bg-[#080808] border border-white/5 hover:border-white/20 transition-colors group relative overflow-hidden">
+                    <span class="absolute top-0 left-0 w-1 h-full bg-gray-800 group-hover:bg-white transition-colors"></span>
+                    <div class="font-mono text-[10px] text-gray-500 uppercase tracking-widest mb-3 flex gap-4">
+                        <span>2026.04.15</span>
+                        <span>3 min read</span>
+                    </div>
+                    <h4 class="text-lg font-medium text-white mb-2 group-hover:text-gray-200">
+                        <span class="lang-en">Neural Networks on Client: PyTorch -> ONNX</span>
+                        <span class="lang-ru">Нейросети на клиенте: PyTorch -> ONNX</span>
+                    </h4>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        <span class="lang-en">How to run a heavy computer vision model directly in the user's browser without losing accuracy. Converting PyTorch models to ONNX format for client-side inference.</span>
+                        <span class="lang-ru">Как запустить тяжелую модель компьютерного зрения прямо в браузере пользователя без потери точности. Конвертация моделей PyTorch в формат ONNX для инференса на стороне клиента.</span>
+                    </p>
+                    <div class="flex gap-3 mt-4">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">PyTorch</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">ONNX</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Computer Vision</span>
+                    </div>
+                </a>
+                <!-- Note 3 -->
+                <a href="#" class="block p-6 bg-[#080808] border border-white/5 hover:border-white/20 transition-colors group relative overflow-hidden">
+                    <span class="absolute top-0 left-0 w-1 h-full bg-gray-800 group-hover:bg-white transition-colors"></span>
+                    <div class="font-mono text-[10px] text-gray-500 uppercase tracking-widest mb-3 flex gap-4">
+                        <span>2026.03.22</span>
+                        <span>4 min read</span>
+                    </div>
+                    <h4 class="text-lg font-medium text-white mb-2 group-hover:text-gray-200">
+                        <span class="lang-en">Building a real-time task tracker with WebSockets</span>
+                        <span class="lang-ru">Создание real-time таск-трекера на вебсокетах</span>
+                    </h4>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        <span class="lang-en">A deep dive into how Tasco uses WebSocket connections for real-time collaboration. Architecture patterns for handling concurrent task updates across distributed teams.</span>
+                        <span class="lang-ru">Погружение в то, как Tasco использует WebSocket-соединения для совместной работы в реальном времени. Архитектурные паттерны для обработки конкурентных обновлений задач в распределённых командах.</span>
+                    </p>
+                    <div class="flex gap-3 mt-4">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">TypeScript</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">WebSockets</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Redis</span>
+                    </div>
+                </a>
+                <!-- Note 4 -->
+                <a href="#" class="block p-6 bg-[#080808] border border-white/5 hover:border-white/20 transition-colors group relative overflow-hidden">
+                    <span class="absolute top-0 left-0 w-1 h-full bg-gray-800 group-hover:bg-white transition-colors"></span>
+                    <div class="font-mono text-[10px] text-gray-500 uppercase tracking-widest mb-3 flex gap-4">
+                        <span>2026.02.10</span>
+                        <span>6 min read</span>
+                    </div>
+                    <h4 class="text-lg font-medium text-white mb-2 group-hover:text-gray-200">
+                        <span class="lang-en">NLP-powered content moderation: the AntiMat story</span>
+                        <span class="lang-ru">NLP-модерация контента: история AntiMat</span>
+                    </h4>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        <span class="lang-en">How we built a Telegram bot that understands context-sensitive profanity filtering. Challenges of multi-language NLP, handling slang, and achieving 98% accuracy.</span>
+                        <span class="lang-ru">Как мы создали Telegram-бота, который понимает контекстную фильтрацию ненормативной лексики. Сложности мультиязычной NLP, обработка сленга и достижение 98% точности.</span>
+                    </p>
+                    <div class="flex gap-3 mt-4">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Python</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">NLP</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Telegram API</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPA: Board Page -->
+    <div id="spa-board" class="spa-page">
+        <div class="spa-page-header">
+            <a href="/" class="spa-back-btn" onclick="event.preventDefault();if(window.__spaNav)window.__spaNav('/');">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                <span class="lang-en">Back</span><span class="lang-ru">Назад</span>
+            </a>
+            <h1><span class="lang-en">/ community board</span><span class="lang-ru">/ гостевая доска</span></h1>
+            <p><span class="lang-en">Leave an idea, feedback, or just say hi</span><span class="lang-ru">Оставь идею, фидбек или просто поздоровайся</span></p>
+        </div>
+        <div class="max-w-[900px] mx-auto px-6 pb-24">
+            <!-- Board Input -->
+            <div class="mb-12 flex flex-col max-w-2xl w-full">
+                <div id="spa-board-input-wrap" class="p-1 bg-white/5 border border-white/10 rounded-lg flex items-center shadow-lg transition-all duration-300">
+                    <input type="text" id="spa-board-input" data-en-placeholder="Write something..." data-ru-placeholder="Напиши что-нибудь..." placeholder="Write something..." class="flex-1 bg-transparent text-white font-mono text-sm px-4 py-3 focus:outline-none min-w-0" maxlength="120">
+                    <span id="spa-board-char-counter" class="font-mono text-[10px] text-gray-500 mr-4 shrink-0 transition-colors">0/120</span>
+                    <button id="spa-board-add-btn" class="shrink-0 font-mono text-xs px-6 py-3 bg-white text-black hover:bg-gray-300 transition-colors uppercase tracking-widest rounded-md font-bold"><span class="lang-en">Post Note</span><span class="lang-ru">Отправить</span></button>
+                </div>
+                <div class="h-4 mt-2 px-2 flex items-center pointer-events-none">
+                    <span id="spa-board-warning" class="font-mono text-[10px] text-red-500 uppercase tracking-widest opacity-0 transition-opacity duration-300 flex items-center gap-2">
+                        <span class="inline-block animate-pulse emoji">⚠️</span>
+                        [ SYS.ERR ] Buffer overflow. 120 chars max.
+                    </span>
+                </div>
+            </div>
+            <!-- Board Notes Grid -->
+            <div id="spa-board-notes" class="columns-1 sm:columns-2 md:columns-3 gap-6">
+                <!-- Notes injected by JS -->
+            </div>
+        </div>
+    </div>
+
     <script>
     (() => {
         'use strict';
@@ -1049,6 +1455,197 @@
         const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
         const isTouch = matchMedia('(hover: none), (pointer: coarse)').matches;
         const DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+
+        // ============================================================
+        // SPA ROUTER
+        // ============================================================
+        const contentWrap = document.getElementById('content-wrap');
+        const spaNotes = document.getElementById('spa-notes');
+        const spaBoard = document.getElementById('spa-board');
+
+        function spaNavigate(path) {
+            // Close mobile menu if open
+            if (typeof closeMobileMenu === 'function') closeMobileMenu();
+
+            // Hide all SPA pages
+            contentWrap.style.display = '';
+            spaNotes.classList.remove('active');
+            spaBoard.classList.remove('active');
+
+            if (path === '/notes') {
+                contentWrap.style.display = 'none';
+                spaNotes.classList.add('active');
+                document.title = 'CRLX1Q | Notes';
+                window.scrollTo(0, 0);
+            } else if (path === '/board') {
+                contentWrap.style.display = 'none';
+                spaBoard.classList.add('active');
+                document.title = 'CRLX1Q | Board';
+                window.scrollTo(0, 0);
+                initSpaBoardNotes();
+            } else {
+                document.title = 'CRLX1Q | Software Developer';
+                // Handle hash navigation
+                if (path.includes('#')) {
+                    const hash = path.split('#')[1];
+                    if (hash) {
+                        setTimeout(() => {
+                            const el = document.getElementById(hash);
+                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }, 100);
+                    }
+                }
+            }
+
+            history.pushState(null, '', path);
+        }
+
+        window.__spaNav = spaNavigate;
+
+        // Handle browser back/forward
+        window.addEventListener('popstate', () => {
+            const path = location.pathname;
+            contentWrap.style.display = '';
+            spaNotes.classList.remove('active');
+            spaBoard.classList.remove('active');
+
+            if (path === '/notes') {
+                contentWrap.style.display = 'none';
+                spaNotes.classList.add('active');
+                document.title = 'CRLX1Q | Notes';
+            } else if (path === '/board') {
+                contentWrap.style.display = 'none';
+                spaBoard.classList.add('active');
+                document.title = 'CRLX1Q | Board';
+                initSpaBoardNotes();
+            } else {
+                document.title = 'CRLX1Q | Software Developer';
+            }
+        });
+
+        // Handle initial route on page load
+        if (location.pathname === '/notes') {
+            contentWrap.style.display = 'none';
+            spaNotes.classList.add('active');
+            document.title = 'CRLX1Q | Notes';
+        } else if (location.pathname === '/board') {
+            contentWrap.style.display = 'none';
+            spaBoard.classList.add('active');
+            document.title = 'CRLX1Q | Board';
+        }
+
+        // ============================================================
+        // SPA BOARD PAGE LOGIC
+        // ============================================================
+        let spaBoardLoaded = false;
+        
+        const escapeHTMLSafe = str => {
+            if (!str) return '';
+            let escaped = str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag]));
+            return escaped.replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, '<span class="emoji">$1</span>');
+        };
+
+        function createSpaBoardNote(note) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'break-inside-avoid mb-6 w-full inline-block';
+            wrapper.innerHTML = `
+                <div class="relative p-5 bg-[#0a0a0a] border border-white/10 group hover:border-white/30 transition-all duration-300 hover:-translate-y-1 shadow-lg sticky-note" style="transform: rotate(${note.rot || 0}deg)">
+                    <p class="font-sans text-sm text-gray-300 leading-relaxed mb-4 break-words whitespace-pre-wrap">${escapeHTMLSafe(note.text)}</p>
+                    <div class="flex justify-between items-center border-t border-gray-800 pt-2 mt-auto">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest">${new Date(note.date || Date.now()).toLocaleDateString('en-GB')}</span>
+                        <span class="font-mono text-[10px] text-gray-500">- ${escapeHTMLSafe(note.author)}</span>
+                    </div>
+                </div>
+            `;
+            return wrapper;
+        }
+
+        function initSpaBoardNotes() {
+            const container = document.getElementById('spa-board-notes');
+            if (!container) return;
+            
+            fetch('/api/notes')
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        container.innerHTML = '';
+                        data.forEach(n => container.appendChild(createSpaBoardNote(n)));
+                    }
+                })
+                .catch(() => console.error('Failed to load board notes'));
+        }
+
+        // Board page input handlers
+        const spaBoardInput = document.getElementById('spa-board-input');
+        const spaBoardAddBtn = document.getElementById('spa-board-add-btn');
+        const spaBoardCounter = document.getElementById('spa-board-char-counter');
+        const spaBoardWrap = document.getElementById('spa-board-input-wrap');
+        const spaBoardWarning = document.getElementById('spa-board-warning');
+
+        spaBoardInput?.addEventListener('input', () => {
+            const len = spaBoardInput.value.length;
+            spaBoardCounter.textContent = `${len}/120`;
+            if (len >= 120) {
+                spaBoardCounter.style.color = '#ef4444';
+                spaBoardWrap.classList.add('input-error-glow');
+            } else {
+                spaBoardCounter.style.color = '';
+                spaBoardWrap.classList.remove('input-error-glow');
+                spaBoardWarning.classList.remove('opacity-100');
+            }
+        });
+
+        async function handleSpaBoardPost() {
+            const val = spaBoardInput.value.trim().substring(0, 120);
+            if (!val) return;
+            
+            spaBoardAddBtn.disabled = true;
+            spaBoardAddBtn.style.opacity = '0.5';
+
+            try {
+                const res = await fetch('/api/notes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: val })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    spaBoardWarning.innerHTML = `<span class="inline-block animate-pulse emoji">⚠️</span> [ SYS.ERR ] ${data.error || 'ERROR'}`;
+                    spaBoardWarning.classList.add('opacity-100');
+                    setTimeout(() => spaBoardWarning.classList.remove('opacity-100'), 3500);
+                } else {
+                    const container = document.getElementById('spa-board-notes');
+                    container.prepend(createSpaBoardNote(data));
+                    spaBoardInput.value = '';
+                    spaBoardInput.dispatchEvent(new Event('input'));
+                    // Also update the main page board
+                    const mainBoard = document.getElementById('notes-masonry');
+                    if (mainBoard) {
+                        const mainNote = createSpaBoardNote(data);
+                        mainBoard.prepend(mainNote);
+                    }
+                }
+            } catch (err) {
+                spaBoardWarning.innerHTML = `<span class="inline-block animate-pulse emoji">⚠️</span> [ SYS.ERR ] CONNECTION ERROR`;
+                spaBoardWarning.classList.add('opacity-100');
+                setTimeout(() => spaBoardWarning.classList.remove('opacity-100'), 3500);
+            } finally {
+                spaBoardAddBtn.disabled = false;
+                spaBoardAddBtn.style.opacity = '1';
+            }
+        }
+
+        spaBoardAddBtn?.addEventListener('click', handleSpaBoardPost);
+        spaBoardInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleSpaBoardPost();
+        });
+
+        // Init board if starting on /board
+        if (location.pathname === '/board') {
+            setTimeout(initSpaBoardNotes, 100);
+        }
 
         // ============================================================
         // BRAND GLITCH ANIMATION
