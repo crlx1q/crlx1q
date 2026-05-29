@@ -2209,12 +2209,16 @@
         
         function getArtFontSize() { 
             const w = innerWidth;
-            if (w <= 360) return 9; 
-            if (w <= 420) return 11.5; 
-            if (w <= 480) return 13;
-            if (w <= 640) return 15; 
-            if (w <= 900) return 18; 
-            if (w <= 1200) return 21; 
+            // The ASCII art is ~48 characters wide. Safely calculate max font size to avoid overflow on any device.
+            // On some mobile OS, monospace characters can render slightly wider.
+            const dynamicFs = Math.max(5, (w - 40) / 29); // 40px safe margin
+            
+            if (w <= 360) return Math.min(dynamicFs, 8.5); 
+            if (w <= 420) return Math.min(dynamicFs, 10.5); 
+            if (w <= 480) return Math.min(dynamicFs, 12);
+            if (w <= 640) return Math.min(dynamicFs, 14); 
+            if (w <= 900) return Math.min(dynamicFs, 18); 
+            if (w <= 1200) return Math.min(dynamicFs, 21); 
             return 26; 
         }
         
