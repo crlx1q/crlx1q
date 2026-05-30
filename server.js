@@ -2,28 +2,113 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const PORT = 3000;
 const VERSION = '2.5.0';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const NOTES_FILE = path.join(__dirname, 'notes.json');
+const NOTES_BACKUP_FILE = path.join(__dirname, 'notes.backup.json');
+const NOTE_LIMIT = 50;
+const NOTE_RATE_WINDOW = 30 * 60 * 1000;
+const RATE_CLEANUP_INTERVAL = 10 * 60 * 1000;
 
 // MIME-типы для корректной отдачи файлов
 const MIME_TYPES = {
-    '.html': 'text/html',
-    '.css': 'text/css',
-    '.js': 'text/javascript',
+    '.html': 'text/html; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
     '.gif': 'image/gif',
     '.svg': 'image/svg+xml',
     '.ico': 'image/x-icon',
-    '.json': 'application/json',
-    '.txt': 'text/plain',
+    '.json': 'application/json; charset=utf-8',
+    '.txt': 'text/plain; charset=utf-8',
+    '.webmanifest': 'application/manifest+json; charset=utf-8',
     '.woff': 'font/woff',
     '.woff2': 'font/woff2'
 };
+
+const SECURITY_HEADERS = {
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Content-Security-Policy': [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "img-src 'self' data:",
+        "connect-src 'self'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'"
+    ].join('; ')
+};
+
+function send(res, statusCode, headers, body) {
+    res.writeHead(statusCode, { ...SECURITY_HEADERS, ...headers });
+    res.end(body);
+}
+
+function sendJson(res, statusCode, data, extraHeaders = {}) {
+    send(res, statusCode, { 'Content-Type': 'application/json; charset=utf-8', ...extraHeaders }, JSON.stringify(data));
+}
+
+function cacheHeaders(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.html') return { 'Cache-Control': 'no-cache' };
+    if (['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.css', '.js', '.woff', '.woff2', '.webmanifest'].includes(ext)) {
+        return { 'Cache-Control': 'public, max-age=31536000, immutable' };
+    }
+    return { 'Cache-Control': 'no-cache' };
+}
+
+function makeNoteId() {
+    return `note_${Date.now().toString(36)}_${crypto.randomBytes(4).toString('hex')}`;
+}
+
+function normalizeNote(note, index = 0) {
+    const createdAt = typeof note.createdAt === 'string'
+        ? note.createdAt
+        : new Date(note.date || Date.now() - index).toISOString();
+    return {
+        id: typeof note.id === 'string' && note.id ? note.id : makeNoteId(),
+        text: typeof note.text === 'string' ? note.text.slice(0, 120) : '',
+        author: typeof note.author === 'string' && note.author ? note.author : 'guest',
+        rot: Number.isFinite(Number(note.rot)) ? Number(note.rot) : 0,
+        createdAt,
+        date: Date.parse(createdAt) || Date.now()
+    };
+}
+
+function saveNotesAtomic() {
+    const payload = JSON.stringify(notes, null, 2);
+    const tmpFile = `${NOTES_FILE}.${process.pid}.tmp`;
+    fs.writeFile(tmpFile, payload, (err) => {
+        if (err) return console.error('Ошибка записи notes tmp:', err.message);
+        fs.copyFile(NOTES_FILE, NOTES_BACKUP_FILE, () => {
+            fs.rename(tmpFile, NOTES_FILE, (renameErr) => {
+                if (renameErr) console.error('Ошибка сохранения notes.json:', renameErr.message);
+            });
+        });
+    });
+}
+
+function getClientIp(req) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.trim()) return forwarded.split(',')[0].trim();
+    return req.socket.remoteAddress || 'unknown';
+}
+
+function cleanupRateLimit(now = Date.now()) {
+    for (const [ip, lastTime] of ipRateLimit) {
+        if (now - lastTime > NOTE_RATE_WINDOW + RATE_CLEANUP_INTERVAL) ipRateLimit.delete(ip);
+    }
+}
 
 // Заглушка проектов
 const PROJECTS = [
@@ -69,14 +154,13 @@ const PROJECTS = [
         totalChecks: 0, successfulChecks: 0, status: 'offline', uptime: '0.00'
     }
 ];
-
 // Фоновый чек аптайма
 function checkProjectsStatus() {
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
     console.log(`\n\x1b[90m  ┌──────────────────────────────────────────────────\x1b[0m`);
     console.log(`\x1b[90m  │\x1b[0m \x1b[36m⟳\x1b[0m  \x1b[1mUptime Service\x1b[0m \x1b[90m— v${VERSION} — ${timestamp}\x1b[0m`);
     console.log(`\x1b[90m  ├──────────────────────────────────────────────────\x1b[0m`);
-    
+
     PROJECTS.forEach(p => {
         if (!p.url) return;
         if (p.status === 'wip') {
@@ -112,7 +196,7 @@ function checkProjectsStatus() {
             console.log(`\x1b[90m  │\x1b[0m  \x1b[33m⏱\x1b[0m \x1b[33m[TIMEOUT]\x1b[0m ${p.name.padEnd(14)} \x1b[90m→ 5000ms exceeded\x1b[0m`);
         });
     });
-    
+
     setTimeout(() => {
         console.log(`\x1b[90m  └──────────────────────────────────────────────────\x1b[0m`);
     }, 6000);
@@ -121,101 +205,113 @@ function checkProjectsStatus() {
 checkProjectsStatus();
 setInterval(checkProjectsStatus, 5 * 60 * 1000); // каждые 5 минут
 
+
 // Инициализация заметок (Board)
 let notes = [];
 if (fs.existsSync(NOTES_FILE)) {
     try {
-        notes = JSON.parse(fs.readFileSync(NOTES_FILE, 'utf8'));
+        const rawNotes = JSON.parse(fs.readFileSync(NOTES_FILE, 'utf8'));
+        notes = Array.isArray(rawNotes) ? rawNotes.map(normalizeNote).slice(0, NOTE_LIMIT) : [];
     } catch(e) {
-        console.error("Ошибка чтения notes.json");
+        console.error('Ошибка чтения notes.json');
     }
 } else {
     notes = [
-        { text: "Awesome portfolio! Love the terminal vibe 🔥", author: "anon_dev", rot: -1 },
-        { text: "Waiting for UMA beta release. Need a solid secure messenger.", author: "crypto_guy", rot: 1.5 },
-        { text: "Nice ASCII art implementation. Smooth af.", author: "neo", rot: -2 },
-        { text: "Frontend looks dope, what font is that? 🤔", author: "designer12", rot: 1 },
-        { text: "Привет из КЗ! Успехов с проектами 🇰🇿", author: "almaty_coder", rot: -0.5 }
-    ];
+        { text: 'Awesome portfolio! Love the terminal vibe 🔥', author: 'anon_dev', rot: -1 },
+        { text: 'Waiting for UMA beta release. Need a solid secure messenger.', author: 'crypto_guy', rot: 1.5 },
+        { text: 'Nice ASCII art implementation. Smooth af.', author: 'neo', rot: -2 },
+        { text: 'Frontend looks dope, what font is that? 🤔', author: 'designer12', rot: 1 },
+        { text: 'Привет из КЗ! Успехов с проектами 🇰🇿', author: 'almaty_coder', rot: -0.5 }
+    ].map(normalizeNote);
     fs.writeFileSync(NOTES_FILE, JSON.stringify(notes, null, 2));
 }
 
 // Простая защита от спама (ограничение запросов)
 const ipRateLimit = new Map();
+setInterval(cleanupRateLimit, RATE_CLEANUP_INTERVAL).unref();
 
 const server = http.createServer((req, res) => {
+    const urlPath = req.url.split('?')[0];
+
+    if (urlPath === '/health') {
+        return sendJson(res, 200, {
+            ok: true,
+            version: VERSION,
+            uptime: process.uptime(),
+            notes: notes.length,
+            projects: PROJECTS.length,
+            timestamp: new Date().toISOString()
+        }, { 'Cache-Control': 'no-cache' });
+    }
+
     // API endpoints
-    if (req.url === '/api/init') {
+    if (urlPath === '/api/init') {
         const acceptLang = req.headers['accept-language'] || '';
         const isRu = acceptLang.includes('ru') || acceptLang.includes('uk') || acceptLang.includes('be') || acceptLang.includes('kk');
         const lang = isRu ? 'ru' : 'en';
 
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ 
+        return sendJson(res, 200, {
             uptime: process.uptime(),
             version: VERSION,
             lang: lang
-        }));
+        }, { 'Cache-Control': 'no-cache' });
     }
 
-    if (req.url === '/api/projects' && req.method === 'GET') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify(PROJECTS));
+    if (urlPath === '/api/projects' && req.method === 'GET') {
+        return sendJson(res, 200, PROJECTS, { 'Cache-Control': 'no-cache' });
     }
 
-    if (req.url === '/api/notes' && req.method === 'GET') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify(notes));
+    if (urlPath === '/api/notes' && req.method === 'GET') {
+        return sendJson(res, 200, notes, { 'Cache-Control': 'no-cache' });
     }
 
-    if (req.url === '/api/notes' && req.method === 'POST') {
+    if (urlPath === '/api/notes' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => {
             body += chunk.toString();
             if (body.length > 5000) req.connection.destroy(); // Защита от больших payload
         });
         req.on('end', () => {
-            const ip = req.socket.remoteAddress;
+            const ip = getClientIp(req);
             const now = Date.now();
+            cleanupRateLimit(now);
             const lastTime = ipRateLimit.get(ip) || 0;
-            
+
             // Лимит: 1 заметка раз в 30 минут
-            if (now - lastTime < 30 * 60 * 1000) {
-                res.writeHead(429, { 'Content-Type': 'application/json' });
-                return res.end(JSON.stringify({ error: 'RATE LIMIT. 1 NOTE PER 30 MINS.' }));
+            if (now - lastTime < NOTE_RATE_WINDOW) {
+                return sendJson(res, 429, { error: 'RATE LIMIT. 1 NOTE PER 30 MINS.' }, { 'Cache-Control': 'no-cache' });
             }
 
             try {
                 const data = JSON.parse(body);
                 if (!data.text || typeof data.text !== 'string') {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    return res.end(JSON.stringify({ error: 'Некорректный текст' }));
+                    return sendJson(res, 400, { error: 'Некорректный текст' }, { 'Cache-Control': 'no-cache' });
                 }
-                
+
                 const text = data.text.trim().substring(0, 120); // Ограничение в 120 символов
                 if (!text || text.length < 2) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    return res.end(JSON.stringify({ error: 'Текст слишком короткий' }));
+                    return sendJson(res, 400, { error: 'Текст слишком короткий' }, { 'Cache-Control': 'no-cache' });
                 }
-                
+
+                const createdAt = new Date().toISOString();
                 const newNote = {
+                    id: makeNoteId(),
                     text: text,
-                    author: "guest_" + Math.floor(Math.random()*9000 + 1000), 
+                    author: 'guest_' + Math.floor(Math.random()*9000 + 1000),
                     rot: (Math.random() * 4) - 2,
-                    date: Date.now()
+                    createdAt,
+                    date: Date.parse(createdAt)
                 };
-                
+
                 notes.unshift(newNote); // Добавляем в начало
-                if (notes.length > 50) notes.pop(); // Храним только последние 50 заметок
-                
-                fs.writeFile(NOTES_FILE, JSON.stringify(notes, null, 2), () => {});
+                if (notes.length > NOTE_LIMIT) notes.pop(); // Храним только последние 50 заметок
+
+                saveNotesAtomic();
                 ipRateLimit.set(ip, now);
-                
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(newNote));
+
+                return sendJson(res, 200, newNote, { 'Cache-Control': 'no-cache' });
             } catch (e) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Ошибка обработки данных' }));
+                return sendJson(res, 400, { error: 'Ошибка обработки данных' }, { 'Cache-Control': 'no-cache' });
             }
         });
         return;
@@ -223,33 +319,39 @@ const server = http.createServer((req, res) => {
 
     // Логирование запросов в консоль
     console.log(`\x1b[90m[REQ]\x1b[0m ${req.method} ${req.url}`);
-    
+
     // SPA-роуты — отдаем index.html для клиентских страниц
     const spaRoutes = ['/notes', '/board'];
-    const urlPath = req.url.split('?')[0];
-    
+
     if (spaRoutes.includes(urlPath)) {
         const indexPath = path.join(PUBLIC_DIR, 'index.html');
         fs.readFile(indexPath, (err, data) => {
             if (err) {
-                res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end('500 Internal Server Error');
+                send(res, 500, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }, '500 Internal Server Error');
             } else {
-                res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end(data);
+                send(res, 200, { 'Content-Type': 'text/html; charset=utf-8', ...cacheHeaders(indexPath) }, data);
             }
         });
         return;
     }
-    
+
     // Нормализация пути
     let filePath = req.url === '/' ? '/index.html' : req.url;
     filePath = filePath.split('?')[0]; // Убираем query-параметры
-    
+
     // Защита от выхода за пределы папки (Directory Traversal)
-    const safePath = path.normalize(filePath).replace(/^(\.\.[\/\\])+/, '');
+    let decodedPath;
+    try {
+        decodedPath = decodeURIComponent(filePath);
+    } catch (e) {
+        return send(res, 400, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }, '400 Bad Request');
+    }
+    const safePath = path.normalize(decodedPath).replace(/^(\.\.[/\\])+/, '');
     const absPath = path.join(PUBLIC_DIR, safePath);
-    
+    if (!absPath.startsWith(PUBLIC_DIR)) {
+        return send(res, 403, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }, '403 Forbidden');
+    }
+
     const extname = String(path.extname(absPath)).toLowerCase();
     const contentType = MIME_TYPES[extname] || 'application/octet-stream';
 
@@ -257,23 +359,19 @@ const server = http.createServer((req, res) => {
     fs.readFile(absPath, (err, data) => {
         if (err) {
             if (err.code === 'ENOENT') {
-                res.writeHead(404, { 'Content-Type': 'text/plain' });
-                res.end('404 Not Found');
+                send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }, '404 Not Found');
             } else {
-                res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end('500 Internal Server Error');
+                send(res, 500, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }, '500 Internal Server Error');
             }
         } else {
-            res.writeHead(200, { 'Content-Type': contentType });
-            res.end(data);
+            send(res, 200, { 'Content-Type': contentType, ...cacheHeaders(absPath) }, data);
         }
     });
 });
-
 server.listen(PORT, () => {
     // Красивый ASCII арт
     const asciiArt = `
-\x1b[97m   ██████╗ ██████╗ ██╗     ██╗  ██╗██╗ ██████╗ 
+\x1b[97m   ██████╗ ██████╗ ██╗     ██╗  ██╗██╗ ██████╗
   ██╔════╝ ██╔══██╗██║     ╚██╗██╔╝██║██╔═══██╗
   ██║      ██████╔╝██║      ╚███╔╝ ██║██║   ██║
   ██║      ██╔══██╗██║      ██╔██╗ ██║██║▄▄ ██║
@@ -284,7 +382,7 @@ server.listen(PORT, () => {
   > \x1b[32m[network]\x1b[90m     stack ready.
   > \x1b[33m[warn]\x1b[90m        decrypting ascii art... \x1b[32m[ok]\x1b[0m
 `;
-    
+
     console.clear();
     console.log(asciiArt);
     console.log(`\x1b[1m\x1b[32m  >>> CRLX1Q SERVER IS ONLINE <<<\x1b[0m`);
