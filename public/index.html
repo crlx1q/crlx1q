@@ -7,6 +7,38 @@
     <meta name="theme-color" content="#030303">
     <link rel="icon" type="image/png" href="/logo.png">
     <title>CRLX1Q | Software Developer</title>
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="CRLX1Q — Software Developer">
+    <meta property="og:description" content="Creating scalable architecture, neural networks, and aesthetic interfaces.">
+    <meta property="og:image" content="https://crlx1q.com/logo.png">
+    <meta property="og:url" content="https://crlx1q.com">
+    <meta property="og:site_name" content="CRLX1Q">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="CRLX1Q — Software Developer">
+    <meta name="twitter:description" content="Scalable architecture, neural networks, aesthetic interfaces.">
+    <meta name="twitter:image" content="https://crlx1q.com/logo.png">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://crlx1q.com">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "CRLX1Q",
+        "url": "https://crlx1q.com",
+        "jobTitle": "Software Developer",
+        "sameAs": [
+            "https://github.com/crlx1q",
+            "https://t.me/Alisheruy"
+        ]
+    }
+    </script>
     
     <!-- Theme Persistence & System Preference -->
     <script>
@@ -22,30 +54,8 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.tailwindcss.com">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;300;400;700;800&family=Space+Grotesk:wght@300;400;600&family=Major+Mono+Display&family=Share+Tech+Mono&family=Onest:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        mono: ['"JetBrains Mono"', 'monospace'],
-                        sans: ['"Onest"', '"Space Grotesk"', 'sans-serif'],
-                        display: ['"Major Mono Display"', '"JetBrains Mono"', 'monospace'],
-                        tech: ['"Share Tech Mono"', '"JetBrains Mono"', 'monospace'],
-                    },
-                    colors: {
-                        dark: '#030303',
-                        light: '#f5f5f5',
-                        accent: '#ffffff',
-                        grayish: '#888888',
-                        surface: '#111111'
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="/styles.css">
     <style>
         html { background-color: #030303; transition: filter 0.55s ease; will-change: filter; }
         
@@ -732,17 +742,35 @@
         var log = document.getElementById('boot-log');
         var fill = document.getElementById('boot-progress-fill');
         var pct  = document.getElementById('boot-pct');
+
+        // Detect system capabilities for honest boot
+        var _reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var _touch = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+        var _dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        var _conn = (navigator.connection && navigator.connection.effectiveType) ? navigator.connection.effectiveType : 'unknown';
+        var _saveData = (navigator.connection && navigator.connection.saveData) ? true : false;
+        var _initQuality = (_reduced || _saveData) ? 'eco' : 'balanced';
+
         var lines = [
             { text: '> kernel loaded [ok]',     cls: 'ok',   delay: 89  },
-            { text: '> mounting filesystems',    cls: 'dim',  delay: 244 },
-            { text: '> network stack ready',     cls: 'ok',   delay: 422 },
-            { text: '> loading canvas engine',   cls: 'dim',  delay: 578 },
-            { text: '> compiling shaders [ok]',  cls: 'ok',   delay: 756 },
-            { text: '> fonts: onest + jetbrains mono', cls:'dim', delay: 910 },
-            { text: '> spawning ui thread',      cls: 'dim',  delay: 1067 },
-            { text: '> decrypting ascii art',    cls: 'warn', delay: 1222 },
-            { text: '',                          cls: '',     delay: 1388 },
-            { text: '>> boot complete. welcome.', cls: 'head', delay: 1533 },
+            { text: '> mounting filesystems',    cls: 'dim',  delay: 200 },
+            { text: '> network stack ready',     cls: 'ok',   delay: 340 },
+            { text: '> motion preference: ' + (_reduced ? 'reduced' : 'full') + ' [detected]',
+              cls: _reduced ? 'warn' : 'ok', delay: 480 },
+            { text: '> pointer device: ' + (_touch ? 'touch [coarse]' : 'mouse [fine]') + ' [ok]',
+              cls: 'ok', delay: 600 },
+            { text: '> display DPR: ' + _dpr.toFixed(1) + ' [capped]',
+              cls: 'dim', delay: 720 },
+            { text: '> render profile: ' + _initQuality + ' [ok]',
+              cls: _initQuality === 'eco' ? 'warn' : 'ok', delay: 850 },
+            { text: _touch ? '> native cursor fallback [ok]' : '> custom cursor engine [ok]',
+              cls: 'ok', delay: 970 },
+            { text: '> connection: ' + _conn + (_saveData ? ' [save-data]' : ''),
+              cls: _saveData ? 'warn' : 'dim', delay: 1100 },
+            { text: '> canvas engine: ' + (_reduced ? 'static [reduced-motion]' : 'active') + ' [ok]',
+              cls: _reduced ? 'warn' : 'ok', delay: 1230 },
+            { text: '',                          cls: '',     delay: 1380 },
+            { text: '>> system profiled. welcome.', cls: 'head', delay: 1520 },
         ];
         lines.forEach(function(l){
             setTimeout(function(){
@@ -758,7 +786,7 @@
             p = Math.min(100, p + Math.floor(Math.random() * 9) + 3);
             pct.textContent = p + '%';
             if(p >= 100){ clearInterval(pTimer); pct.textContent = '100%'; }
-        }, 61);
+        }, 50);
         setTimeout(function(){
             bs.classList.add('fade-out');
             setTimeout(function(){
@@ -829,6 +857,26 @@
             </div>
             <div class="perf-row">
                 <span class="pk">shimmer</span><span class="pv pv-r" id="pv-shimmer">—</span>
+            </div>
+            <div class="perf-sep"></div>
+            <div id="perf-sys-label" style="font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:#ef4444;font-weight:bold;margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                SYSTEM PROFILE
+            </div>
+            <div class="perf-row">
+                <span class="pk">motion</span><span class="pv pv-r" id="pv-motion">—</span>
+            </div>
+            <div class="perf-row">
+                <span class="pk">pointer</span><span class="pv pv-r" id="pv-pointer">—</span>
+            </div>
+            <div class="perf-row">
+                <span class="pk">quality</span><span class="pv pv-r" id="pv-quality">—</span>
+            </div>
+            <div class="perf-row">
+                <span class="pk">fps tgt</span><span class="pv pv-r" id="pv-fpstarget">—</span>
+            </div>
+            <div class="perf-row">
+                <span class="pk">connect</span><span class="pv pv-r" id="pv-connection">—</span>
             </div>
             <div class="perf-sep"></div>
             <div id="perf-sparkline-wrap">
@@ -1457,6 +1505,94 @@
         const DPR = Math.min(window.devicePixelRatio || 1, 1.5);
 
         // ============================================================
+        // ADAPTIVE RENDER PIPELINE (System-Aware Quality)
+        // ============================================================
+        const RenderPipeline = {
+            quality: 'auto',              // user choice: auto | full | eco
+            effectiveQuality: 'balanced', // runtime: eco | balanced | max
+            bgEvery: 3,                   // frame skip for BG canvas
+            glowRadius: 220,              // cursor glow radius
+            shimmerEnabled: true,         // shimmer on ASCII art
+            fpsBuffer: [],                // last N fps readings (~5 sec)
+            _listeners: [],
+
+            init() {
+                try {
+                    const saved = localStorage.getItem('crlx1q_quality');
+                    if (saved && ['auto','full','eco'].includes(saved)) this.quality = saved;
+                } catch(e) {}
+
+                const saveData = navigator.connection && navigator.connection.saveData;
+                if (this.quality === 'eco' || prefersReduced || saveData) {
+                    this.applyEco();
+                } else if (this.quality === 'full') {
+                    this.applyMax();
+                } else {
+                    this.applyBalanced();
+                }
+            },
+
+            adjustQuality(currentFps) {
+                if (this.quality !== 'auto') return;
+                this.fpsBuffer.push(currentFps);
+                if (this.fpsBuffer.length > 10) this.fpsBuffer.shift();
+                if (this.fpsBuffer.length < 5) return;
+                const avg = this.fpsBuffer.reduce((a,b) => a+b, 0) / this.fpsBuffer.length;
+                if (avg < 40 && this.effectiveQuality !== 'eco') {
+                    this.applyEco();
+                } else if (avg > 55 && this.effectiveQuality === 'eco') {
+                    this.applyBalanced();
+                } else if (avg > 58 && this.effectiveQuality === 'balanced') {
+                    this.applyMax();
+                }
+            },
+
+            applyEco() {
+                this.effectiveQuality = 'eco';
+                this.bgEvery = 6;
+                this.glowRadius = 120;
+                this.shimmerEnabled = false;
+                this._notify();
+            },
+            applyBalanced() {
+                this.effectiveQuality = 'balanced';
+                this.bgEvery = 3;
+                this.glowRadius = 220;
+                this.shimmerEnabled = true;
+                this._notify();
+            },
+            applyMax() {
+                this.effectiveQuality = 'max';
+                this.bgEvery = 1;
+                this.glowRadius = 300;
+                this.shimmerEnabled = true;
+                this._notify();
+            },
+
+            setQuality(mode) {
+                this.quality = mode;
+                try { localStorage.setItem('crlx1q_quality', mode); } catch(e) {}
+                this.fpsBuffer = [];
+                if (mode === 'eco') this.applyEco();
+                else if (mode === 'full') this.applyMax();
+                else this.applyBalanced(); // auto starts at balanced
+            },
+
+            getConnectionInfo() {
+                if (!navigator.connection) return 'unknown';
+                let info = navigator.connection.effectiveType || 'unknown';
+                if (navigator.connection.saveData) info += ' [save-data]';
+                return info;
+            },
+
+            onUpdate(fn) { this._listeners.push(fn); },
+            _notify() { this._listeners.forEach(fn => fn(this)); }
+        };
+
+        RenderPipeline.init();
+        window.__renderPipeline = RenderPipeline;
+
+        // ============================================================
         // SPA ROUTER
         // ============================================================
         const contentWrap = document.getElementById('content-wrap');
@@ -2024,14 +2160,16 @@
 
         const bgStatic = document.getElementById('bg-static'), bgDynamic = document.getElementById('bg-dynamic');
         const sctx = bgStatic.getContext('2d', { alpha: true }), dctx = bgDynamic.getContext('2d', { alpha: true });
-        const FONT_SIZE = 16, CHARS = ['+','-','.',':','>','<','=','#','0','1','~','*','^','|'], RADIUS = 220;
-        const BG_EVERY = 3;           
+        const FONT_SIZE = 16, CHARS = ['+','-','.',':','>','<','=','#','0','1','~','*','^','|'];
         const boostedCells = new Set(); 
         let W = 0, H = 0, cols = 0, rows = 0, cells = [], prevMx = -9999, prevMy = -9999, rafId = null;
         let globalAlphaBoost = 1;     
         let needsFullRedraw = true;   
         let bgFrame = 0;              
-        let shimmerActive = false, shimmerT0 = 0; 
+        let shimmerActive = RenderPipeline.shimmerEnabled, shimmerT0 = 0;
+
+        // Sync shimmer state with RenderPipeline
+        RenderPipeline.onUpdate(p => { shimmerActive = p.shimmerEnabled; }); 
         
         function resize() {
             W = innerWidth; H = innerHeight;
@@ -2162,21 +2300,23 @@
             }
 
             bgFrame++;
-            if (bgFrame >= BG_EVERY) {
+            const _bgEvery = RenderPipeline.bgEvery;
+            const _glowR = RenderPipeline.glowRadius;
+            if (bgFrame >= _bgEvery) {
                 bgFrame = 0;
                 
                 updateCells();
                 
-                const clearR = RADIUS + 20;
+                const clearR = _glowR + 20;
                 if (prevMx > -9000) dctx.clearRect(prevMx - clearR, prevMy - clearR, clearR * 2, clearR * 2);
                 dctx.clearRect(mx - clearR, my - clearR, clearR * 2, clearR * 2);
-                const grad = dctx.createRadialGradient(mx, my, 0, mx, my, RADIUS);
+                const grad = dctx.createRadialGradient(mx, my, 0, mx, my, _glowR);
                 grad.addColorStop(0, 'rgba(255,255,255,0.07)');
                 grad.addColorStop(0.3, 'rgba(255,255,255,0.04)');
                 grad.addColorStop(0.7, 'rgba(255,255,255,0.015)');
                 grad.addColorStop(1, 'rgba(255,255,255,0)');
                 dctx.fillStyle = grad;
-                dctx.fillRect(mx - RADIUS, my - RADIUS, RADIUS * 2, RADIUS * 2);
+                dctx.fillRect(mx - _glowR, my - _glowR, _glowR * 2, _glowR * 2);
                 prevMx = mx; prevMy = my;
             }
 
@@ -2362,15 +2502,42 @@
         function termPrint(html) { termLog.insertAdjacentHTML('beforeend', '\n' + html); termLog.scrollTop = termLog.scrollHeight; }
         
         const commands = {
-            help: () => 'Available commands:\n  help       — this help\n  about      — about me\n  ls         — list project files\n  projects   — list projects\n  stack      — tech stack\n  contact    — reach me\n  social     — social links\n  blog       — notes section\n  board      — public board\n  theme      — toggle light/dark\n  debug      — toggle performance monitor\n  matrix     — surprise\n  clear      — clear log\n  exit       — close terminal',
+            help: () => 'Available commands:\n  help       — this help\n  about      — about me\n  ls         — list project files\n  projects   — list projects\n  stack      — tech stack\n  contact    — reach me\n  social     — social links\n  blog       — notes section\n  board      — public board\n  theme      — toggle light/dark\n  debug      — toggle performance monitor\n  system     — system profile\n  profile    — alias for system\n  quality    — set render quality (auto/full/eco)\n  motion     — motion preference status\n  matrix     — surprise\n  clear      — clear log\n  exit       — close terminal',
             about: () => document.documentElement.lang === 'ru' ? 'CRLX1Q — Software Developer.\nМасштабируемая архитектура, нейросети, эстетичные интерфейсы.' : 'CRLX1Q — Software Developer.\nScalable architecture, neural networks, aesthetic interfaces.',
             ls: () => '  ./\n  ├── server.js\n  ├── index.html\n  ├── package.json\n  ├── README.md\n  └── projects/\n      ├── uma/\n      ├── aistudymate/\n      ├── tasco/\n      ├── antimat/\n      └── foodlensai/',
             projects: () => 'UMA          → uma.reflexai.pro      (' + (document.documentElement.lang === 'ru' ? 'флагман' : 'flagship') + ')\nAiStudyMate  → aistudymate.reflexai.pro\nTasco        → tasco.reflexai.pro\nAntiMat      → antimat.reflexai.pro\nFoodLensAI   → foodlensai.reflexai.pro',
             stack: () => 'TypeScript · React · Next.js · Node · Go · Python · PyTorch · PostgreSQL · Redis · Docker · K8s · Rust · WebGL · gRPC · Tailwind',
-            contact: () => 'Email: contact@crlx1q.pro',
-            social: () => '[ GitHub: github.com/crlx1q ] [ Telegram: t.me/Alisheruy ] [ Email: contact@crlx1q.pro ]',
+            contact: () => 'Email: contact@crlx1q.com',
+            social: () => '[ GitHub: github.com/crlx1q ] [ Telegram: t.me/Alisheruy ] [ Email: contact@crlx1q.com ]',
             blog: () => 'Access /blog section on page.',
             board: () => 'Access /board to leave notes.',
+            system: () => {
+                const rp = RenderPipeline;
+                const conn = rp.getConnectionInfo();
+                const saveData = navigator.connection && navigator.connection.saveData ? 'true' : 'false';
+                const theme = document.documentElement.classList.contains('light-mode') ? 'light' : 'dark';
+                const lang = document.documentElement.lang || 'en';
+                return 'SYSTEM PROFILE ———————————————\n' +
+                    '  os preference : reduced-motion=' + prefersReduced + '\n' +
+                    '  pointer       : ' + (isTouch ? 'coarse (touch)' : 'fine (mouse)') + '\n' +
+                    '  canvas        : ' + (prefersReduced ? 'disabled' : 'active') + '\n' +
+                    '  render quality: ' + rp.effectiveQuality + ' [' + rp.quality + ']\n' +
+                    '  dpr           : ' + DPR.toFixed(1) + ' (capped)\n' +
+                    '  bg_every      : ' + rp.bgEvery + '\n' +
+                    '  glow_radius   : ' + rp.glowRadius + 'px\n' +
+                    '  shimmer       : ' + (rp.shimmerEnabled ? 'on' : 'off') + '\n' +
+                    '  connection    : ' + conn + '\n' +
+                    '  save-data     : ' + saveData + '\n' +
+                    '  theme         : ' + theme + '\n' +
+                    '  language      : ' + lang;
+            },
+            profile: () => commands.system(),
+            motion: () => {
+                return '> motion preference: ' + (prefersReduced ? 'REDUCED' : 'FULL') + '\n' +
+                    '> animations: ' + (prefersReduced ? 'disabled by OS' : 'enabled') + '\n' +
+                    '> canvas: ' + (prefersReduced ? 'static mode' : 'active rendering') + '\n' +
+                    '> cursor: ' + (isTouch || prefersReduced ? 'native (system)' : 'custom (dot + outline)');
+            },
             matrix: () => { flashStatic(5.5, 2000); return 'wake up, neo... the matrix has you.'; },
             debug: () => { if (typeof window.togglePerf === 'function') return window.togglePerf(); return '> error: monitor not found.'; },
             theme: () => {
@@ -2399,13 +2566,27 @@
         
         termInput?.addEventListener('keydown', (e) => { 
             if (e.key !== 'Enter') return; 
-            const cmd = termInput.value.trim().toLowerCase(); 
+            const rawCmd = termInput.value.trim(); 
+            const cmdLower = rawCmd.toLowerCase(); 
             termInput.value = ''; 
-            if (!cmd) return; 
-            termPrint('<span class="prompt">C:\\&gt;</span> ' + cmd); 
-            const fn = commands[cmd]; 
+            if (!cmdLower) return; 
+            termPrint('<span class="prompt">C:\\&gt;</span> ' + rawCmd); 
+            // Handle quality command with argument
+            if (cmdLower.startsWith('quality')) {
+                const parts = cmdLower.split(/\s+/);
+                if (parts.length >= 2 && ['auto','full','eco'].includes(parts[1])) {
+                    RenderPipeline.setQuality(parts[1]);
+                    const rp = RenderPipeline;
+                    termPrint('> render pipeline set to: ' + parts[1] + '\n> effective: ' + rp.effectiveQuality + '\n> bg_every=' + rp.bgEvery + ', glow=' + rp.glowRadius + 'px, shimmer=' + (rp.shimmerEnabled ? 'on' : 'off') + '\n> saved to localStorage.');
+                } else {
+                    const rp = RenderPipeline;
+                    termPrint('> current quality: ' + rp.effectiveQuality + ' [' + rp.quality + ']\n> usage: quality [auto|full|eco]\n  auto — adapts to FPS automatically\n  full — maximum effects\n  eco  — reduced effects for performance');
+                }
+                return;
+            }
+            const fn = commands[cmdLower]; 
             if (fn) { const out = fn(); if (out) termPrint(out); } 
-            else termPrint(`'${cmd}' is not recognized as an internal or external command,\noperable program or batch file.`); 
+            else termPrint(`'${rawCmd}' is not recognized as an internal or external command,\noperable program or batch file.`); 
         });
 
         const aboutLines = document.querySelectorAll('.about-line'); 
@@ -2601,6 +2782,25 @@
                     }
                     
                     pvShimmer.textContent = shimmerActive ? 'ON' : 'OFF';
+
+                    // Feed FPS to adaptive render pipeline
+                    RenderPipeline.adjustQuality(fps);
+
+                    // Update SYSTEM PROFILE fields
+                    const pvMotion = document.getElementById('pv-motion');
+                    const pvPointer = document.getElementById('pv-pointer');
+                    const pvQuality = document.getElementById('pv-quality');
+                    const pvFpsTarget = document.getElementById('pv-fpstarget');
+                    const pvConn = document.getElementById('pv-connection');
+                    if (pvMotion) pvMotion.textContent = prefersReduced ? 'reduced' : 'full';
+                    if (pvPointer) pvPointer.textContent = isTouch ? 'touch' : 'mouse';
+                    if (pvQuality) {
+                        const rp = RenderPipeline;
+                        pvQuality.textContent = rp.effectiveQuality + ' [' + rp.quality + ']';
+                        pvQuality.style.color = rp.effectiveQuality === 'eco' ? '#facc15' : rp.effectiveQuality === 'max' ? '#4ade80' : '#ccc';
+                    }
+                    if (pvFpsTarget) pvFpsTarget.textContent = RenderPipeline.quality === 'auto' ? 'adaptive' : (RenderPipeline.quality === 'full' ? 'uncapped' : 'low');
+                    if (pvConn) pvConn.textContent = RenderPipeline.getConnectionInfo();
 
                     drawSparkline(fpsHistory, histIdx);
                 }

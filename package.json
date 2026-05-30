@@ -1,16 +1,21 @@
 {
   "name": "crlx1q",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Personal portfolio and project dashboard server",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build:css": "npx tailwindcss -i src/input.css -o public/styles.css --minify",
+    "watch:css": "npx tailwindcss -i src/input.css -o public/styles.css --watch"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
   }
 }

@@ -2,9 +2,10 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const PORT = 3000;
-const VERSION = '2.5.0';
+const VERSION = '2.6.0';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const NOTES_FILE = path.join(__dirname, 'notes.json');
 
@@ -24,6 +25,36 @@ const MIME_TYPES = {
     '.woff': 'font/woff',
     '.woff2': 'font/woff2'
 };
+
+// Security headers
+function getSecurityHeaders(contentType) {
+    const headers = {
+        'Content-Type': contentType,
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+    };
+    if (contentType === 'text/html') {
+        headers['Cache-Control'] = 'no-cache';
+        headers['Content-Security-Policy'] = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' https://fonts.gstatic.com",
+            "img-src 'self' data:",
+            "connect-src 'self'",
+            "frame-ancestors 'none'",
+        ].join('; ');
+    } else if (contentType === 'application/json') {
+        headers['Cache-Control'] = 'no-store';
+    } else {
+        // Static assets — aggressive caching
+        headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+    }
+    return headers;
+}
 
 // Заглушка проектов
 const PROJECTS = [
@@ -143,14 +174,42 @@ if (fs.existsSync(NOTES_FILE)) {
 // Простая защита от спама (ограничение запросов)
 const ipRateLimit = new Map();
 
+// Получить реальный IP (поддержка proxy/CDN)
+function getClientIP(req) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) return forwarded.split(',')[0].trim();
+    return req.socket.remoteAddress;
+}
+
+// TTL cleanup каждые 10 минут
+setInterval(() => {
+    const now = Date.now();
+    const TTL = 30 * 60 * 1000;
+    for (const [ip, time] of ipRateLimit) {
+        if (now - time > TTL) ipRateLimit.delete(ip);
+    }
+}, 10 * 60 * 1000);
+
 const server = http.createServer((req, res) => {
+    // Health check endpoint
+    if (req.url === '/health' && req.method === 'GET') {
+        res.writeHead(200, getSecurityHeaders('application/json'));
+        return res.end(JSON.stringify({
+            ok: true,
+            version: VERSION,
+            uptime: Math.floor(process.uptime()),
+            timestamp: new Date().toISOString(),
+            projects: PROJECTS.filter(p => p.status === 'live').length + '/' + PROJECTS.length + ' live'
+        }));
+    }
+
     // API endpoints
     if (req.url === '/api/init') {
         const acceptLang = req.headers['accept-language'] || '';
         const isRu = acceptLang.includes('ru') || acceptLang.includes('uk') || acceptLang.includes('be') || acceptLang.includes('kk');
         const lang = isRu ? 'ru' : 'en';
 
-        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.writeHead(200, getSecurityHeaders('application/json'));
         return res.end(JSON.stringify({ 
             uptime: process.uptime(),
             version: VERSION,
@@ -159,12 +218,12 @@ const server = http.createServer((req, res) => {
     }
 
     if (req.url === '/api/projects' && req.method === 'GET') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.writeHead(200, getSecurityHeaders('application/json'));
         return res.end(JSON.stringify(PROJECTS));
     }
 
     if (req.url === '/api/notes' && req.method === 'GET') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.writeHead(200, getSecurityHeaders('application/json'));
         return res.end(JSON.stringify(notes));
     }
 
@@ -175,20 +234,20 @@ const server = http.createServer((req, res) => {
             if (body.length > 5000) req.connection.destroy(); // Защита от больших payload
         });
         req.on('end', () => {
-            const ip = req.socket.remoteAddress;
+            const ip = getClientIP(req);
             const now = Date.now();
             const lastTime = ipRateLimit.get(ip) || 0;
             
             // Лимит: 1 заметка раз в 30 минут
             if (now - lastTime < 30 * 60 * 1000) {
-                res.writeHead(429, { 'Content-Type': 'application/json' });
+                res.writeHead(429, getSecurityHeaders('application/json'));
                 return res.end(JSON.stringify({ error: 'RATE LIMIT. 1 NOTE PER 30 MINS.' }));
             }
 
             try {
                 const data = JSON.parse(body);
                 if (!data.text || typeof data.text !== 'string') {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.writeHead(400, getSecurityHeaders('application/json'));
                     return res.end(JSON.stringify({ error: 'Некорректный текст' }));
                 }
                 
@@ -199,22 +258,31 @@ const server = http.createServer((req, res) => {
                 }
                 
                 const newNote = {
+                    id: crypto.randomUUID(),
                     text: text,
                     author: "guest_" + Math.floor(Math.random()*9000 + 1000), 
                     rot: (Math.random() * 4) - 2,
+                    createdAt: new Date().toISOString(),
                     date: Date.now()
                 };
                 
                 notes.unshift(newNote); // Добавляем в начало
                 if (notes.length > 50) notes.pop(); // Храним только последние 50 заметок
                 
-                fs.writeFile(NOTES_FILE, JSON.stringify(notes, null, 2), () => {});
+                // Atomic write: tmp -> rename
+                const tmpPath = NOTES_FILE + '.tmp';
+                try {
+                    fs.writeFileSync(tmpPath, JSON.stringify(notes, null, 2));
+                    fs.renameSync(tmpPath, NOTES_FILE);
+                } catch (writeErr) {
+                    console.error('Error writing notes:', writeErr);
+                }
                 ipRateLimit.set(ip, now);
                 
-                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.writeHead(200, getSecurityHeaders('application/json'));
                 res.end(JSON.stringify(newNote));
             } catch (e) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.writeHead(400, getSecurityHeaders('application/json'));
                 res.end(JSON.stringify({ error: 'Ошибка обработки данных' }));
             }
         });
@@ -235,7 +303,7 @@ const server = http.createServer((req, res) => {
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
                 res.end('500 Internal Server Error');
             } else {
-                res.writeHead(200, { 'Content-Type': 'text/html' });
+                res.writeHead(200, getSecurityHeaders('text/html'));
                 res.end(data);
             }
         });
@@ -264,7 +332,7 @@ const server = http.createServer((req, res) => {
                 res.end('500 Internal Server Error');
             }
         } else {
-            res.writeHead(200, { 'Content-Type': contentType });
+            res.writeHead(200, getSecurityHeaders(contentType));
             res.end(data);
         }
     });
