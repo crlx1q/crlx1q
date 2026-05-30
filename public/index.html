@@ -1,0 +1,2614 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CRLX1Q — Software Developer. Масштабируемая архитектура, нейросети и эстетичные интерфейсы.">
+    <meta name="theme-color" content="#030303">
+    <link rel="icon" type="image/png" href="/logo.png">
+    <title>CRLX1Q | Software Developer</title>
+    
+    <!-- Theme Persistence & System Preference -->
+    <script>
+        (function() {
+            try {
+                const saved = localStorage.getItem('crlx1q_theme');
+                if (saved === 'light' || (!saved && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+                    document.documentElement.classList.add('light-mode');
+                }
+            } catch (e) {}
+        })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;300;400;700;800&family=Space+Grotesk:wght@300;400;600&family=Major+Mono+Display&family=Share+Tech+Mono&family=Onest:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                        sans: ['"Onest"', '"Space Grotesk"', 'sans-serif'],
+                        display: ['"Major Mono Display"', '"JetBrains Mono"', 'monospace'],
+                        tech: ['"Share Tech Mono"', '"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        dark: '#030303',
+                        light: '#f5f5f5',
+                        accent: '#ffffff',
+                        grayish: '#888888',
+                        surface: '#111111'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { background-color: #030303; transition: filter 0.55s ease; will-change: filter; }
+        
+        /* Light mode inversion */
+        html.light-mode { filter: invert(1) hue-rotate(180deg); }
+        
+        /* Language visibility */
+        html[lang="en"] .lang-ru { display: none !important; }
+        html[lang="ru"] .lang-en { display: none !important; }
+        
+        /* ГЛОБАЛЬНОЕ ОТКЛЮЧЕНИЕ ТЕНЕЙ В СВЕТЛОЙ ТЕМЕ (исправляет размытость/белое свечение) */
+        html.light-mode * {
+            text-shadow: none !important;
+        }
+        
+        /* Единая система защиты цветов от инверсии (двойная инверсия возвращает оригинал) */
+        html.light-mode .theme-protect,
+        html.light-mode .emoji,
+        html.light-mode .dot-r, 
+        html.light-mode .dot-y, 
+        html.light-mode .dot-g,
+        html.light-mode #clock-s,
+        html.light-mode .card-status.live::before,
+        html.light-mode .nav-now-building::before,
+        html.light-mode .card-status.wip::before,
+        html.light-mode .color-dot-green,
+        html.light-mode .color-dot-yellow,
+        html.light-mode #footer-uptime-badge span:first-child {
+            filter: invert(1) hue-rotate(180deg);
+        }
+
+        body {
+            background: transparent;
+            color: #f5f5f5;
+            cursor: none;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::selection { background: rgba(255,255,255,0.99); color: #000; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #030303; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Console Cursor Animation */
+        @keyframes console-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .console-cursor {
+            animation: console-blink 1s step-end infinite;
+            display: inline-block;
+        }
+
+        /* Canvas Background layers */
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            contain: strict;
+            transform: translateZ(0);
+        }
+        #bg-wrap {
+            contain: strict;
+            will-change: transform;
+        }
+        #bg-dynamic { z-index: 1; }
+        #bg-static  { z-index: 0; }
+
+        /* Custom Cursor */
+        #cursor-dot, #cursor-outline {
+            position: fixed;
+            top: 0; left: 0;
+            border-radius: 50%;
+            z-index: 9999;
+            pointer-events: none;
+            will-change: transform;
+            transform: translate3d(-100px,-100px,0);
+            contain: layout style paint;
+        }
+        #cursor-dot {
+            width: 6px; height: 6px;
+            margin: -3px 0 0 -3px;
+            background-color: #fff;
+        }
+        #cursor-outline {
+            width: 30px; height: 30px;
+            margin: -15px 0 0 -15px;
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: width .2s, height .2s, margin .2s, border-color .2s, background-color .2s;
+        }
+        #cursor-outline.is-hover {
+            width: 50px; height: 50px;
+            margin: -25px 0 0 -25px;
+            border-color: #fff;
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        /* ASCII Hero */
+        .ascii-container {
+            display: inline-block;
+            text-align: left;
+            line-height: 1.15;
+            letter-spacing: 0;
+            white-space: pre;
+            font-family: "JetBrains Mono", "Courier New", monospace;
+            font-weight: 400;
+            font-variant-ligatures: none;
+            font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            position: relative;
+        }
+        .ascii-container canvas {
+            filter: drop-shadow(0 0 10px rgba(0,0,0,0.9)) drop-shadow(0 0 20px rgba(0,0,0,0.6));
+        }
+
+        .font-display { font-family: "Major Mono Display", "JetBrains Mono", monospace; letter-spacing: 0.02em; }
+        .font-tech { font-family: "Share Tech Mono", "JetBrains Mono", monospace; }
+
+        /* Project Cards */
+        .project-card {
+            --mx: 0px; --my: 0px; --lift: 0px;
+            background: rgba(6,6,6,0.92);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: border-color .4s ease, box-shadow .4s ease, transform .3s cubic-bezier(.2,.7,.3,1);
+            position: relative;
+            overflow: hidden;
+            transform: translate3d(var(--mx), calc(var(--my) + var(--lift)), 0);
+            will-change: transform;
+        }
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            transition: left .6s ease;
+            pointer-events: none;
+        }
+        .project-card:hover::before { left: 100%; }
+        .project-card:hover {
+            --lift: -6px;
+            border-color: rgba(255,255,255,0.3);
+            box-shadow: 0 10px 30px -10px rgba(255,255,255,0.1);
+        }
+        .project-card .glow {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .3s ease;
+            background: radial-gradient(320px circle at var(--gx,50%) var(--gy,50%), rgba(255,255,255,0.08), transparent 60%);
+        }
+        .project-card:hover .glow { opacity: 1; }
+
+        .uma-badge { animation: pulse-border 2.4s infinite; }
+        @keyframes pulse-border {
+            0%,100% { border-color: rgba(255,255,255,0.2); box-shadow: none; }
+            50%     { border-color: rgba(255,255,255,0.8); box-shadow: 0 0 20px rgba(255,255,255,0.15); }
+        }
+
+        .card-tags {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            margin-top: 12px;
+        }
+        .card-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #555;
+            border: 1px solid rgba(255,255,255,0.07);
+            padding: 2px 7px;
+            border-radius: 2px;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .project-card:hover .card-tag { color: #999; border-color: rgba(255,255,255,0.18); }
+
+        .card-status {
+            font-size: 0.75rem; 
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #aaa;
+        }
+        .card-status.live {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.35);
+        }
+        .card-status.live::before {
+            content: '';
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse-opacity 2s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+        .card-status.wip {
+            color: #ccc;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        .card-status.wip::before {
+            content: '◐';
+            font-size: 8px;
+            color: #eab308;
+            animation: spin-slow 3s linear infinite;
+            display: inline-block;
+        }
+        .card-status.offline {
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+        .card-status.offline::before {
+            content: '●';
+            font-size: 8px;
+            color: #ef4444;
+            display: inline-block;
+        }
+        @keyframes spin-slow { to { transform: rotate(360deg); } }
+        
+        .project-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 0; height: 2px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.6), transparent);
+            transition: width 0.5s cubic-bezier(.4,0,.2,1);
+        }
+        .project-card:hover::after { width: 60%; }
+
+        .fade-up { opacity: 0; transform: translateY(30px); transition: opacity .8s ease-out, transform .8s ease-out; }
+        .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+        nav a, nav button, nav span, section h2, section h3, section h4, section p, section span, footer a, footer div, .stat-num, .font-display {
+            text-shadow: 0 0 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7);
+        }
+        
+        .stat-num {
+            font-variant-numeric: tabular-nums;
+            background: linear-gradient(180deg, #fff 0%, #888 100%);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Stack marquee */
+        .marquee {
+            mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+            -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+            overflow: hidden;
+        }
+        .marquee-track {
+            display: flex; gap: 2.5rem; width: max-content;
+            animation: scroll-x 40s linear infinite;
+            will-change: transform;
+        }
+        .marquee:hover .marquee-track { animation-play-state: paused; }
+        @keyframes scroll-x { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
+        .chip {
+            font-family: 'JetBrains Mono', monospace; font-size: .75rem; text-transform: uppercase;
+            letter-spacing: .15em; color: #9a9a9a; border: 1px solid rgba(255,255,255,0.08);
+            padding: .5rem 1rem; border-radius: 999px; background: rgba(3,3,3,0.88);
+            white-space: nowrap; transition: color .2s, border-color .2s, background .2s;
+            text-shadow: 0 0 6px rgba(0,0,0,0.8);
+        }
+        .chip:hover { color: #fff; border-color: rgba(255,255,255,0.4); background: rgba(3,3,3,0.95); }
+
+        /* Terminal Win11 Style */
+        #terminal {
+            position: fixed; left: 1.5rem; right: 1.5rem; bottom: 1.5rem;
+            max-width: 720px; margin-inline: auto; background: rgba(12, 12, 12, 0.96);
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace; font-size: 13px;
+            color: #cccccc; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            z-index: 9998; display: none; box-shadow: 0 20px 60px -10px rgba(0,0,0,0.8);
+            overflow: hidden; flex-direction: column;
+        }
+        #terminal.open { display: flex; animation: term-in .25s ease-out; }
+        @keyframes term-in { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
+        
+        .win11-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            background: rgba(30,30,30,0.7); height: 38px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            user-select: none;
+        }
+        .win11-tabs-area { display: flex; align-items: flex-end; height: 100%; padding-left: 8px; }
+        .win11-tab {
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(12,12,12,0.96); color: #e2e2e2;
+            height: 32px; padding: 0 12px; border-radius: 6px 6px 0 0;
+            font-family: 'Segoe UI', system-ui, sans-serif; font-size: 12px; min-width: 220px;
+            border: 1px solid rgba(255,255,255,0.05); border-bottom: none;
+        }
+        .win11-tab-icon { width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
+        .win11-tab-close {
+            margin-left: auto; background: transparent; border: none; color: #a0a0a0;
+            font-size: 12px; line-height: 1; padding: 2px 4px; border-radius: 4px; cursor: pointer; transition: 0.2s;
+        }
+        .win11-tab-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        
+        .win11-tab-new {
+            display: flex; align-items: center; gap: 6px;
+            color: #a0a0a0; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 16px;
+            padding: 0 10px; height: 32px; cursor: pointer; border-radius: 4px; margin-left: 4px;
+            margin-bottom: 2px; transition: 0.2s;
+        }
+        .win11-tab-new:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        
+        .win11-window-controls { display: flex; height: 32px; align-items: flex-start; }
+        .win11-ctrl {
+            background: transparent; border: none; color: #ccc;
+            width: 46px; height: 32px; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: background 0.1s;
+        }
+        .win11-ctrl svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 1; }
+        .win11-ctrl:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .win11-ctrl.close:hover { background: #e81123; color: white; }
+
+        .win11-body { padding: 14px 16px; flex: 1; display: flex; flex-direction: column; }
+        #terminal .term-log { max-height: 220px; overflow-y: auto; margin-bottom: 4px; white-space: pre-wrap; line-height: 1.5; }
+        #terminal .term-input-row { display: flex; align-items: center; gap: 8px; }
+        #terminal input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: inherit; font-size: inherit; caret-color: #fff; }
+        #terminal .prompt { color: #cccccc; }
+
+        #scroll-progress { position: fixed; top: 0; left: 0; height: 2px; width: 0%; background: linear-gradient(90deg, rgba(255,255,255,0.3), #fff); z-index: 100; will-change: width; }
+
+        #term-toggle {
+            position: relative; border: 1px solid rgba(255,255,255,0.6); color: #fff; background: rgba(255,255,255,0.04);
+            padding: 0.35rem 0.6rem; border-radius: 6px; font-family: "JetBrains Mono", monospace; font-size: 10px;
+            letter-spacing: 0.12em; display: inline-flex; align-items: center; gap: 6px;
+            animation: term-pulse 2.6s ease-in-out infinite; transition: transform .2s ease, background .2s ease, color .2s ease;
+        }
+        #term-toggle::before {
+            content: ''; position: absolute; inset: -2px; border-radius: 8px;
+            background: radial-gradient(circle, rgba(255,255,255,0.35), transparent 70%); opacity: 0;
+            animation: term-halo 2.6s ease-in-out infinite; pointer-events: none; z-index: -1;
+        }
+        #term-toggle:hover { background: #fff; color: #000; transform: scale(1.05); animation: none; }
+        #term-toggle:hover::before { opacity: 0; }
+        #term-toggle kbd { display: inline-block; padding: 1px 4px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); border-radius: 3px; font-size: 9px; line-height: 1; font-family: inherit; }
+        @keyframes term-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.5), 0 0 12px rgba(255,255,255,0.1); } 50% { box-shadow: 0 0 0 6px rgba(255,255,255,0), 0 0 22px rgba(255,255,255,0.25); } }
+        @keyframes term-halo { 0%,100% { opacity: 0; } 50% { opacity: 0.5; } }
+
+        #term-hint {
+            position: fixed; top: 60px; right: 20px; background: #fff; color: #000; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+            padding: 8px 12px; border-radius: 4px; z-index: 9997; pointer-events: none; opacity: 0; transform: translateY(-6px);
+            transition: opacity .4s ease, transform .4s ease; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        #term-hint.show { opacity: 1; transform: translateY(0); }
+        #term-hint::after { content: ''; position: absolute; top: -5px; right: 28px; width: 10px; height: 10px; background: #fff; transform: rotate(45deg); }
+
+        .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
+        @media (max-width: 768px) { .about-grid { grid-template-columns: 1fr; } }
+        .about-skills-panel { height: 100%; }
+        .skill-row { display: flex !important; align-items: center; gap: 10px; margin-bottom: 2px; }
+        .skill-name { width: 68px; flex-shrink: 0; font-size: 12px; }
+        .skill-bar-wrap { flex: 1; height: 3px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+        .skill-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.9)); border-radius: 2px; transition: width 1.1s cubic-bezier(.4,0,.2,1); }
+        .skill-pct { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #444; width: 30px; text-align: right; flex-shrink: 0; transition: color 1.1s ease; }
+        .skill-row.filled .skill-pct { color: #888; }
+        .skills-header { margin-bottom: 4px; }
+
+        .about-terminal { background: rgba(6,6,6,0.9); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden; }
+        .about-terminal-bar { background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); padding: 10px 16px; display: flex; align-items: center; gap: 7px; }
+        .dot-r { width:10px;height:10px;border-radius:50%;background:#ff5f57;flex-shrink:0; }
+        .dot-y { width:10px;height:10px;border-radius:50%;background:#ffbd2e;flex-shrink:0; }
+        .dot-g { width:10px;height:10px;border-radius:50%;background:#28ca41;flex-shrink:0; }
+        .about-terminal-bar span.term-title { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #444; letter-spacing: 0.1em; }
+        .about-body { padding: 24px 28px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 2; }
+        .about-line { opacity: 0; transform: translateX(-6px); transition: opacity 0.4s ease, transform 0.4s ease; }
+        .about-line.typed { opacity: 1; transform: translateX(0); }
+        .about-line .ak { color: #888; } .about-line .av { color: #f5f5f5; } .about-line .ac { color: #4ade80; } .about-line .am { color: #facc15; } .about-line .empty { display: block; height: 1.2em; }
+
+        .nav-now-building { display: inline-flex; align-items: center; gap: 7px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 400; letter-spacing: 0.1em; text-transform: lowercase; color: #aaa; pointer-events: none; user-select: none; }
+        .nav-now-building::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; animation: pulse-opacity 2s ease-in-out infinite; flex-shrink: 0; }
+        
+        nav { transition: background 0.4s ease, border-color 0.4s ease, backdrop-filter 0.4s ease; border-bottom: 1px solid transparent; }
+        nav.scrolled { background: rgba(3,3,3,0.4); border-color: rgba(255,255,255,0.06); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+        .scanline-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+        .scanline-wrap::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px); animation: scanline-drift 12s linear infinite; }
+        @keyframes scanline-drift { from { background-position: 0 0; } to { background-position: 0 100px; } }
+
+        /* Error message animations */
+        @keyframes error-shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-4px); }
+            40% { transform: translateX(4px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+        .animate-error-shake {
+            animation: error-shake 0.3s ease-in-out;
+        }
+        .input-error-glow {
+            border-color: rgba(239, 68, 68, 0.5) !important;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.15) !important;
+            background-color: rgba(239, 68, 68, 0.05) !important;
+        }
+
+        /* Sticky tape for board notes */
+        .sticky-note::before {
+            content: ''; 
+            position: absolute; 
+            top: -12px; 
+            left: 50%; 
+            margin-left: -24px; 
+            width: 48px; 
+            height: 18px; 
+            background: rgba(255, 255, 255, 0.15); 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3); 
+            backdrop-filter: blur(3px); 
+            -webkit-backdrop-filter: blur(3px);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 1px;
+            z-index: 10;
+        }
+
+        #boot-screen { position: fixed; inset: 0; background: #030303; z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 2.5rem 3.5rem; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #555; transition: opacity 0.7s ease-out; overflow: hidden; }
+        #boot-screen.fade-out { opacity: 0; pointer-events: none; }
+        #boot-screen .boot-brand { font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: #fff; margin-bottom: 2.5rem; opacity: 0.5; }
+        #boot-log div { line-height: 2; opacity: 0; transform: translateX(-8px); animation: boot-line-in 0.3s ease-out forwards; }
+        @keyframes boot-line-in { to { opacity: 1; transform: translateX(0); } }
+        #boot-log .ok { color: #4ade80; } #boot-log .warn { color: #facc15; } #boot-log .dim { color: #444; } #boot-log .head { color: #fff; letter-spacing: 0.1em; }
+        #boot-progress-wrap { margin-top: 1.5rem; width: 260px; }
+        #boot-progress-bar { height: 1px; background: #1a1a1a; width: 100%; }
+        #boot-progress-fill { height: 100%; background: #fff; width: 0%; transition: width 1.8s cubic-bezier(.4,0,.2,1); }
+        #boot-progress-label { margin-top: 6px; font-size: 10px; color: #444; display: flex; justify-content: space-between; }
+        #boot-pct { color: #fff; }
+
+        /* Burger Menu */
+        .burger-btn {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 36px;
+            height: 36px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 6px;
+            cursor: pointer;
+            gap: 5px;
+            padding: 7px;
+            transition: background 0.2s, border-color 0.2s;
+            z-index: 60;
+            position: relative;
+        }
+        .burger-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+        .burger-btn span {
+            display: block;
+            width: 18px;
+            height: 1.5px;
+            background: #fff;
+            border-radius: 2px;
+            transition: transform 0.3s ease, opacity 0.2s ease;
+        }
+        .burger-btn.active span:nth-child(1) { transform: rotate(45deg) translate(4.5px, 4.5px); }
+        .burger-btn.active span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+        .burger-btn.active span:nth-child(3) { transform: rotate(-45deg) translate(4.5px, -4.5px); }
+
+        .mobile-menu {
+            position: fixed;
+            inset: 0;
+            z-index: 55;
+            background: rgba(3,3,3,0.97);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-12px);
+            transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1), visibility 0s 0.4s;
+            pointer-events: none;
+        }
+        .mobile-menu.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+            transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1), visibility 0s 0s;
+        }
+        .mobile-menu a, .mobile-menu-lang-wrap {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease, color 0.2s;
+        }
+        .mobile-menu.open a, .mobile-menu.open .mobile-menu-lang-wrap {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .mobile-menu.open a:nth-child(1) { transition-delay: 0.06s; }
+        .mobile-menu.open a:nth-child(3) { transition-delay: 0.1s; }
+        .mobile-menu.open a:nth-child(5) { transition-delay: 0.14s; }
+        .mobile-menu.open a:nth-child(7) { transition-delay: 0.18s; }
+        .mobile-menu.open .mobile-menu-lang-wrap { transition-delay: 0.24s; }
+        .mobile-menu.open .mobile-menu-footer { transition-delay: 0.3s; }
+        .mobile-menu a {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: #888;
+            padding: 1.2rem 2rem;
+            text-decoration: none;
+        }
+        .mobile-menu a:hover, .mobile-menu a:active { color: #fff; transform: translateX(6px); }
+        .mobile-menu .mobile-menu-divider {
+            width: 40px;
+            height: 1px;
+            background: rgba(255,255,255,0.1);
+            margin: 0.5rem 0;
+        }
+        .mobile-menu .mobile-menu-lang-wrap {
+            margin-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+        }
+        .mobile-menu .mobile-menu-lang-btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: #555;
+            background: transparent;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: color 0.2s, background 0.2s;
+        }
+        .mobile-menu .mobile-menu-lang-btn.active {
+            color: #fff;
+            background: rgba(255,255,255,0.12);
+        }
+        .mobile-menu .mobile-menu-lang-btn:not(.active):hover {
+            color: #aaa;
+        }
+        .mobile-menu .mobile-menu-footer {
+            margin-top: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .mobile-menu.open .mobile-menu-footer {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .mobile-menu .mobile-menu-footer img {
+            width: 28px;
+            height: 28px;
+            opacity: 0.5;
+        }
+        .mobile-menu .mobile-menu-footer span {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: #444;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        /* Nav logo image */
+        .nav-logo-img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            flex-shrink: 0;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+        .nav-logo-img:hover { opacity: 1; }
+
+        /* SPA Page Overlays */
+        .spa-page {
+            display: none;
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+        .spa-page.active { display: block; }
+        .spa-page-header {
+            padding: 3rem 1.5rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .spa-page-header h1 {
+            font-family: 'Major Mono Display', 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7);
+        }
+        .spa-page-header p {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+        .spa-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            text-decoration: none;
+            margin-bottom: 1.5rem;
+        }
+        .spa-back-btn:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+
+        @media (max-width: 640px) {
+            nav { padding: 0.75rem 1rem; } 
+            nav .font-mono.text-sm { font-size: 0.85rem; } 
+            .burger-btn { display: flex; }
+            .nav-links { display: none !important; }
+            section#stats, section#stack { padding: 1rem 0.75rem; }
+            section#projects, section#blog, section#board { padding: 2rem 0.75rem; }
+            .project-card { padding: 1.25rem; } .project-card h4 { font-size: 1.25rem; } .project-card .text-4xl { font-size: 1.75rem; }
+            .marquee-track { gap: 1rem; } .chip { font-size: .6rem; padding: .35rem .7rem; }
+            footer { padding: 1.5rem 0.75rem; } footer .flex.gap-8 { gap: 1rem; flex-wrap: wrap; justify-content: center; }
+            #term-toggle, #term-hint { display: none !important; }
+            #terminal { font-size: 11px; left: 0.5rem; right: 0.5rem; bottom: 0.5rem; }
+            .win11-tab { min-width: 160px; }
+            .ascii-container { max-width: 95vw; overflow: hidden; }
+            .nav-now-building { display: none; }
+            .nav-logo-img { width: 22px; height: 22px; }
+        }
+        @media (hover: none), (pointer: coarse) { body { cursor: auto; } #cursor-dot, #cursor-outline { display: none !important; } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } body { cursor: auto; } #cursor-dot, #cursor-outline { display: none !important; } .marquee-track { animation: none; } .fade-up { opacity: 1; transform: none; } }
+    </style>
+</head>
+<body class="antialiased font-sans selection:bg-white selection:text-black">
+
+    <!-- Boot Sequence Overlay -->
+    <div id="boot-screen" aria-hidden="true">
+        <div class="boot-brand">CRLX1Q — system.boot()</div>
+        <div id="boot-log"></div>
+        <div id="boot-progress-wrap">
+            <div id="boot-progress-bar"><div id="boot-progress-fill"></div></div>
+            <div id="boot-progress-label"><span>initializing...</span><span id="boot-pct">0%</span></div>
+        </div>
+    </div>
+    <script>
+    (function(){
+        var bs = document.getElementById('boot-screen');
+        var log = document.getElementById('boot-log');
+        var fill = document.getElementById('boot-progress-fill');
+        var pct  = document.getElementById('boot-pct');
+        var lines = [
+            { text: '> kernel loaded [ok]',     cls: 'ok',   delay: 89  },
+            { text: '> mounting filesystems',    cls: 'dim',  delay: 244 },
+            { text: '> network stack ready',     cls: 'ok',   delay: 422 },
+            { text: '> loading canvas engine',   cls: 'dim',  delay: 578 },
+            { text: '> compiling shaders [ok]',  cls: 'ok',   delay: 756 },
+            { text: '> fonts: onest + jetbrains mono', cls:'dim', delay: 910 },
+            { text: '> spawning ui thread',      cls: 'dim',  delay: 1067 },
+            { text: '> decrypting ascii art',    cls: 'warn', delay: 1222 },
+            { text: '',                          cls: '',     delay: 1388 },
+            { text: '>> boot complete. welcome.', cls: 'head', delay: 1533 },
+        ];
+        lines.forEach(function(l){
+            setTimeout(function(){
+                var d = document.createElement('div');
+                d.className = l.cls;
+                d.textContent = l.text;
+                log.appendChild(d);
+            }, l.delay);
+        });
+        setTimeout(function(){ fill.style.width = '100%'; }, 100);
+        var p = 0;
+        var pTimer = setInterval(function(){
+            p = Math.min(100, p + Math.floor(Math.random() * 9) + 3);
+            pct.textContent = p + '%';
+            if(p >= 100){ clearInterval(pTimer); pct.textContent = '100%'; }
+        }, 61);
+        setTimeout(function(){
+            bs.classList.add('fade-out');
+            setTimeout(function(){
+                bs.style.display = 'none';
+                window.__bootDone = true;
+                if (window.__onBootDone) window.__onBootDone();
+            }, 750);
+        }, 2333);
+    })();
+    </script>
+
+    <!-- Scroll progress -->
+    <div id="scroll-progress" aria-hidden="true"></div>
+
+    <!-- 🐛 PERF MONITOR -->
+    <div id="perf-mon" class="pm-hidden" aria-hidden="true">
+        <div id="perf-bar">
+            <span id="perf-label" style="display:flex; align-items:center; gap:6px; color:#ef4444;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block;">
+                    <rect x="8" y="6" width="8" height="12" rx="4" stroke="currentColor" stroke-width="2.5" fill="none"/>
+                    <line x1="10" y1="10" x2="14" y2="10" stroke="currentColor" stroke-width="2.5"/>
+                    <line x1="10" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="2.5"/>
+                    <line x1="10" y1="6" x2="7" y2="3" stroke="currentColor" stroke-width="2.5"/>
+                    <line x1="14" y1="6" x2="17" y2="3" stroke="currentColor" stroke-width="2.5"/>
+                    <line x1="5" y1="9" x2="8" y2="9" stroke="currentColor" stroke-width="2.5"/>
+                    <line x1="5" y1="12" x2="8" y2="12" stroke="currentColor" stroke-width="2.5"/>
+                    <line x1="5" y1="15" x2="8" y2="15" stroke="currentColor" stroke-width="2.5"/>
+                    <line x1="16" y1="9" x2="19" y2="9" stroke="currentColor" stroke-width="2.5"/>
+                    <line x1="16" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2.5"/>
+                    <line x1="16" y1="15" x2="19" y2="15" stroke="currentColor" stroke-width="2.5"/>
+                </svg>
+                DEBUG
+            </span>
+            <span id="perf-fps-badge">··</span>
+            <button id="perf-toggle-btn" title="expand">▾</button>
+            <button id="perf-close-btn" title="close">✕</button>
+        </div>
+        <div id="perf-body">
+            <div class="perf-row" id="pr-fps">
+                <span class="pk">fps</span>
+                <div class="pb-wrap"><div class="pb-fill" id="pb-fps"></div></div>
+                <span class="pv" id="pv-fps">—</span>
+            </div>
+            <div class="perf-row" id="pr-ft">
+                <span class="pk">frame</span>
+                <div class="pb-wrap"><div class="pb-fill" id="pb-ft"></div></div>
+                <span class="pv" id="pv-ft">—</span>
+            </div>
+            <div class="perf-row" id="pr-cells">
+                <span class="pk">dirty</span>
+                <div class="pb-wrap"><div class="pb-fill" id="pb-cells"></div></div>
+                <span class="pv" id="pv-cells">—</span>
+            </div>
+            <div class="perf-row" id="pr-canvas">
+                <span class="pk">canvas</span>
+                <div class="pb-wrap"><div class="pb-fill" id="pb-canvas"></div></div>
+                <span class="pv" id="pv-canvas">—</span>
+            </div>
+            <div class="perf-sep"></div>
+            <div class="perf-row">
+                <span class="pk">dpr</span><span class="pv pv-r" id="pv-dpr">—</span>
+            </div>
+            <div class="perf-row">
+                <span class="pk">res</span><span class="pv pv-r" id="pv-res">—</span>
+            </div>
+            <div class="perf-row">
+                <span class="pk">heap</span><span class="pv pv-r" id="pv-heap">—</span>
+            </div>
+            <div class="perf-row">
+                <span class="pk">shimmer</span><span class="pv pv-r" id="pv-shimmer">—</span>
+            </div>
+            <div class="perf-sep"></div>
+            <div id="perf-sparkline-wrap">
+                <canvas id="perf-spark" width="180" height="36"></canvas>
+            </div>
+            <div id="perf-log-label">last 60 frames</div>
+        </div>
+    </div>
+    <style>
+        #perf-mon {
+            position: fixed; bottom: 20px; right: 20px;
+            font-family: 'JetBrains Mono', monospace; font-size: 11px;
+            background: rgba(4,4,4,0.92); border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 6px; z-index: 99998; user-select: none;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            min-width: 200px; box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+            transition: opacity .2s;
+        }
+        #perf-mon.pm-hidden { display: none; }
+        #perf-bar {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.07);
+            cursor: move;
+        }
+        #perf-label { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; flex: 1; font-weight: bold; }
+        #perf-fps-badge {
+            font-size: 12px; font-weight: 700; color: #4ade80;
+            min-width: 36px; text-align: right; letter-spacing: 0;
+            transition: color .3s;
+        }
+        #perf-fps-badge.warn { color: #facc15; }
+        #perf-fps-badge.bad  { color: #f87171; }
+        #perf-toggle-btn, #perf-close-btn {
+            background: none; border: none; color: #444; cursor: pointer;
+            font-size: 10px; padding: 0 2px; line-height: 1;
+            transition: color .15s;
+        }
+        #perf-toggle-btn:hover, #perf-close-btn:hover { color: #fff; }
+        #perf-body { padding: 10px 12px 8px; }
+        #perf-mon.pm-collapsed #perf-body { display: none; }
+        #perf-mon.pm-collapsed #perf-bar { border-bottom: none; }
+        .perf-row {
+            display: flex; align-items: center; gap: 6px;
+            margin-bottom: 5px; line-height: 1;
+        }
+        .pk { color: #555; width: 44px; flex-shrink: 0; font-size: 10px; }
+        .pb-wrap { flex: 1; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+        .pb-fill { height: 100%; width: 0%; border-radius: 2px; transition: width .2s, background-color .3s; }
+        .pv { color: #ccc; font-size: 10px; min-width: 46px; text-align: right; flex-shrink: 0; }
+        .pv-r { margin-left: auto; }
+        .perf-sep { height: 1px; background: rgba(255,255,255,0.06); margin: 6px 0; }
+        #perf-sparkline-wrap { margin-top: 4px; }
+        #perf-spark { display: block; width: 100%; height: 36px; border-radius: 3px; }
+        #perf-log-label { color: #333; font-size: 9px; text-align: center; margin-top: 3px; letter-spacing: .1em; }
+    </style>
+
+    <!-- Interactive Background -->
+    <div id="bg-wrap" style="position:fixed;inset:0;z-index:0;pointer-events:none;transform:translateZ(0);isolation:isolate">
+        <canvas id="bg-static"  class="bg-canvas" aria-hidden="true"></canvas>
+        <canvas id="bg-dynamic" class="bg-canvas" aria-hidden="true"></canvas>
+    </div>
+
+    <!-- Custom Cursor -->
+    <div id="cursor-dot" aria-hidden="true"></div>
+    <div id="cursor-outline" aria-hidden="true"></div>
+
+    <!-- Terminal Win 11 Style -->
+    <div id="terminal" role="dialog" aria-label="Command terminal">
+        <div class="win11-header">
+            <div class="win11-tabs-area">
+                <div class="win11-tab active">
+                    <svg class="win11-tab-icon" viewBox="0 0 16 16" fill="none">
+                        <rect x="1" y="2" width="14" height="11" rx="1" fill="#000" stroke="#666" stroke-width="1"/>
+                        <path d="M4 5L6 7L4 9" stroke="#ccc" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <line x1="7" y1="9" x2="10" y2="9" stroke="#ccc" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                    <span>C:\WINDOWS\system32\cmd.exe</span>
+                    <button class="win11-tab-close" id="win11-tab-close-btn" aria-label="Close tab">✕</button>
+                </div>
+                <div class="win11-tab-new" aria-label="Open new tab">
+                    <span>+</span>
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style="margin-top:2px"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+            </div>
+            <div class="win11-window-controls">
+                <button class="win11-ctrl min" aria-label="Minimize"><svg viewBox="0 0 10 10"><line x1="0" y1="5" x2="10" y2="5"></line></svg></button>
+                <button class="win11-ctrl max" aria-label="Maximize"><svg viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="none"></rect></svg></button>
+                <button class="win11-ctrl close" id="win11-close-btn" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M1 1L9 9M9 1L1 9" fill="none"></path></svg></button>
+            </div>
+        </div>
+        <div class="win11-body">
+            <div class="term-log" id="term-log">Microsoft Windows [Version 10.0.22631.3296]<br>(c) Microsoft Corporation. All rights reserved.<br><br>C:\&gt; crlx1q.shell v1.0 — type <span class="prompt" style="color:#fff">help</span> and press Enter.</div>
+            <div class="term-input-row"><span class="prompt">C:\&gt;</span><input id="term-input" autocomplete="off" spellcheck="false" placeholder="" /></div>
+        </div>
+    </div>
+
+    <!-- Terminal hint -->
+    <div id="term-hint" aria-hidden="true"><span class="lang-en">Try the interactive shell → press Ctrl+K</span><span class="lang-ru">Попробуй интерактивный shell → нажми Ctrl+K</span></div>
+
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed w-full top-0 z-50 px-6 py-4 flex justify-between items-center pointer-events-auto">
+        <a href="/" id="nav-brand" class="font-mono text-sm tracking-widest uppercase flex items-center gap-3" aria-label="CRL.X1Q()" onclick="if(window.__spaNav){event.preventDefault();window.__spaNav('/');}">
+            <img src="/logo.png" alt="CRLX1Q" class="nav-logo-img theme-protect">
+            <span id="nav-brand-text">CRL.X1Q()</span>
+            <span class="nav-now-building"><span class="lang-en">now building: UMA</span><span class="lang-ru">сейчас в работе: UMA</span></span>
+        </a>
+        <script>
+        (function(){
+            const el = document.getElementById('nav-brand-text');
+            const original = 'CRL.X1Q()';
+            const glyphPool = '#$%@!&*?~^<>/\\|+=;:';
+            let glitchTimer = null;
+            function scheduleGlitch() {
+                glitchTimer = setTimeout(runGlitch, 2500 + Math.random() * 4500);
+            }
+            function runGlitch() {
+                const count = 1 + Math.floor(Math.random() * 3);
+                const indices = [];
+                while (indices.length < count) {
+                    const i = Math.floor(Math.random() * original.length);
+                    if (!indices.includes(i)) indices.push(i);
+                }
+                let frame = 0;
+                const totalFrames = 6 + Math.floor(Math.random() * 6);
+                const interval = setInterval(() => {
+                    let out = '';
+                    for (let i = 0; i < original.length; i++) {
+                        out += (indices.includes(i) && frame < totalFrames - 1)
+                            ? glyphPool[Math.floor(Math.random() * glyphPool.length)]
+                            : original[i];
+                    }
+                    el.textContent = out;
+                    frame++;
+                    if (frame >= totalFrames) {
+                        clearInterval(interval);
+                        el.textContent = original;
+                        scheduleGlitch();
+                    }
+                }, 55);
+            }
+            scheduleGlitch();
+        })();
+        </script>
+        <div class="nav-links flex gap-4 md:gap-6 font-mono text-xs uppercase tracking-wider items-center">
+            <a href="/#projects" class="hover:text-white text-grayish transition-colors nav-main-link"><span class="lang-en">Projects</span><span class="lang-ru">Проекты</span></a>
+            <a href="/notes" class="hover:text-white text-grayish transition-colors nav-main-link" onclick="if(window.__spaNav){event.preventDefault();window.__spaNav('/notes');}"><span class="lang-en">Notes</span><span class="lang-ru">Заметки</span></a>
+            <a href="/board" class="hover:text-white text-grayish transition-colors nav-main-link" onclick="if(window.__spaNav){event.preventDefault();window.__spaNav('/board');}"><span class="lang-en">Board</span><span class="lang-ru">Доска</span></a>
+            <a href="/#contact" class="hover:text-white text-grayish transition-colors nav-main-link"><span class="lang-en">Contact</span><span class="lang-ru">Контакты</span></a>
+
+            <!-- Language Switcher -->
+            <div id="lang-switcher" class="flex items-center p-[2px] bg-black/40 border border-white/10 rounded ml-2">
+                <button class="lang-btn active px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-widest rounded transition-all text-white bg-white/15 shadow-sm" data-lang="en">en</button>
+                <button class="lang-btn px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-widest rounded transition-all text-gray-500 hover:text-gray-300" data-lang="ru">ru</button>
+            </div>
+            <script>
+            (function(){
+                const btns = document.querySelectorAll('.lang-btn');
+                function setLang(lang) {
+                    try { localStorage.setItem('crlx1q_lang', lang); } catch(e){}
+                    document.documentElement.lang = lang;
+                    window.dispatchEvent(new CustomEvent('lang-changed', { detail: lang }));
+                    btns.forEach(b => {
+                        if (b.dataset.lang === lang) {
+                            b.className = 'lang-btn active px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-widest rounded transition-all text-white bg-white/15 shadow-sm';
+                        } else {
+                            b.className = 'lang-btn px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-widest rounded transition-all text-gray-500 hover:text-gray-300 bg-transparent shadow-none';
+                        }
+                    });
+                }
+                
+                window.addEventListener('lang-changed', (e) => {
+                    const l = e.detail;
+                    const noteIn = document.getElementById('note-input');
+                    if(noteIn) noteIn.placeholder = noteIn.getAttribute('data-' + l + '-placeholder') || noteIn.placeholder;
+                });
+
+                let savedLang;
+                try { savedLang = localStorage.getItem('crlx1q_lang'); } catch(e){}
+                if (savedLang) {
+                    setLang(savedLang);
+                } else {
+                    let isCIS = /ru|be|kk|uk|uz|ky/i.test(navigator.language || '');
+                    try {
+                        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+                        if (tz.includes('Europe/Moscow') || tz.includes('Asia/Almaty') || tz.includes('Asia/Tashkent') || tz.includes('Europe/Minsk') || tz.includes('Europe/Kyiv')) {
+                            isCIS = true;
+                        }
+                    } catch(e){}
+                    setLang(isCIS ? 'ru' : 'en');
+                }
+                btns.forEach(b => {
+                    b.addEventListener('click', () => { if (!b.classList.contains('active')) setLang(b.dataset.lang); });
+                });
+            })();
+            </script>
+
+            <button id="term-toggle" class="hidden md:inline-flex" aria-label="Open terminal (Ctrl+K)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                <span>SHELL</span>
+                <kbd>Ctrl</kbd><kbd>K</kbd>
+            </button>
+        </div>
+
+        <!-- Burger Menu Button (Mobile) -->
+        <button id="burger-btn" class="burger-btn" aria-label="Open menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu" class="mobile-menu">
+        <a href="/#projects" onclick="closeMobileMenu();"><span class="lang-en">Projects</span><span class="lang-ru">Проекты</span></a>
+        <div class="mobile-menu-divider"></div>
+        <a href="/notes" onclick="event.preventDefault();closeMobileMenu();if(window.__spaNav)window.__spaNav('/notes');"><span class="lang-en">Notes</span><span class="lang-ru">Заметки</span></a>
+        <div class="mobile-menu-divider"></div>
+        <a href="/board" onclick="event.preventDefault();closeMobileMenu();if(window.__spaNav)window.__spaNav('/board');"><span class="lang-en">Board</span><span class="lang-ru">Доска</span></a>
+        <div class="mobile-menu-divider"></div>
+        <a href="/#contact" onclick="closeMobileMenu();"><span class="lang-en">Contact</span><span class="lang-ru">Контакты</span></a>
+        <!-- Language Switcher -->
+        <div class="mobile-menu-lang-wrap">
+            <button class="mobile-menu-lang-btn" data-mlang="en" onclick="setMobileLang('en')">EN</button>
+            <button class="mobile-menu-lang-btn" data-mlang="ru" onclick="setMobileLang('ru')">RU</button>
+        </div>
+        <div class="mobile-menu-footer">
+            <img src="/logo.png" alt="" class="theme-protect">
+            <span>CRLX1Q</span>
+        </div>
+    </div>
+    <script>
+    function closeMobileMenu() {
+        document.getElementById('mobile-menu').classList.remove('open');
+        document.getElementById('burger-btn').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    document.getElementById('burger-btn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('mobile-menu');
+        const isOpen = menu.classList.toggle('open');
+        this.classList.toggle('active', isOpen);
+        document.body.style.overflow = isOpen ? 'hidden' : '';
+    });
+    // Close on clicking the overlay background (not links/buttons)
+    document.getElementById('mobile-menu').addEventListener('click', function(e) {
+        if (e.target === this) closeMobileMenu();
+    });
+    // Language switcher for mobile menu
+    function setMobileLang(lang) {
+        // Trigger main lang switcher
+        const btns = document.querySelectorAll('.lang-btn');
+        btns.forEach(b => {
+            if (b.dataset.lang === lang && !b.classList.contains('active')) b.click();
+        });
+        syncMobileLangBtns(lang);
+    }
+    function syncMobileLangBtns(lang) {
+        document.querySelectorAll('.mobile-menu-lang-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.mlang === lang);
+        });
+    }
+    // Sync on lang change
+    window.addEventListener('lang-changed', (e) => syncMobileLangBtns(e.detail));
+    // Init sync
+    syncMobileLangBtns(document.documentElement.lang || 'en');
+    </script>
+
+    <!-- Content Wrap -->
+    <div id="content-wrap" style="position:relative;z-index:2">
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex flex-col justify-center items-center px-4 relative">
+        <div class="scanline-wrap" aria-hidden="true"></div>
+        <div class="z-10 text-center w-full max-w-5xl flex flex-col items-center justify-center min-h-[75vh]">
+            <div id="ascii-art" class="ascii-container font-mono mb-8 opacity-0 transition-opacity duration-1000"></div>
+
+            <div class="fade-up w-full flex flex-col items-center">
+                
+                <!-- TERMINAL LIFE WIDGET -->
+                <div class="inline-flex flex-col items-start gap-1 font-mono text-xs md:text-sm text-gray-500 uppercase tracking-widest mb-10 text-left">
+                    <div>&gt; STATUS: <span class="text-white">ONLINE</span><span class="console-cursor">_</span></div>
+                    <div class="flex items-center gap-2">&gt; TIME..: 
+                        <svg id="kzt-clock" width="16" height="16" viewBox="0 0 24 24" class="opacity-80">
+                            <circle cx="12" cy="12" r="10" fill="none" stroke="#555" stroke-width="2"></circle>
+                            <line id="clock-h" x1="12" y1="12" x2="12" y2="7.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" style="transform-origin: 12px 12px; transform: rotate(0deg); transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1);"></line>
+                            <line id="clock-m" x1="12" y1="12" x2="12" y2="5" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" style="transform-origin: 12px 12px; transform: rotate(0deg); transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1);"></line>
+                            <line id="clock-s" x1="12" y1="12" x2="12" y2="3.5" stroke="#ef4444" stroke-width="1" stroke-linecap="round" style="transform-origin: 12px 12px; transform: rotate(0deg); transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1);"></line>
+                            <circle cx="12" cy="12" r="1.5" fill="#fff"></circle>
+                        </svg>
+                        <span id="life-time" class="text-white">00:00</span>
+                    </div>
+                    <div>&gt; ACTIVE: <span id="life-icon"></span> <span id="life-text" class="text-white"></span></div>
+                </div>
+                
+                <h2 class="text-xl md:text-3xl font-light text-light max-w-2xl mx-auto leading-relaxed mt-4">
+                    <span class="lang-en">Creating scalable architecture, neural networks, and aesthetic interfaces.</span><span class="lang-ru">Создаю масштабируемую архитектуру, нейросети и эстетичные интерфейсы.</span>
+                </h2>
+            </div>
+        </div>
+
+        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none opacity-40">
+            <div class="flex flex-col items-center animate-bounce">
+                <p class="font-mono text-xs tracking-widest uppercase whitespace-nowrap"><span class="lang-en">Scroll to explore</span><span class="lang-ru">Листай вниз</span></p>
+                <div class="w-px h-10 bg-white mt-3 opacity-70"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Strip -->
+    <section id="stats" class="py-16 px-6 md:px-12 max-w-7xl mx-auto z-10 relative fade-up">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/5 border border-white/5">
+            <div class="bg-dark p-8 text-center"><div class="stat-num font-display text-4xl md:text-5xl" data-count="5">0</div><div class="font-mono text-[10px] uppercase tracking-[0.25em] text-grayish mt-3"><span class="lang-en">Projects shipped</span><span class="lang-ru">Выпущено проектов</span></div></div>
+            <div class="bg-dark p-8 text-center"><div class="stat-num font-display text-4xl md:text-5xl" data-count="6">0</div><div class="font-mono text-[10px] uppercase tracking-[0.25em] text-grayish mt-3"><span class="lang-en">Years coding</span><span class="lang-ru">Лет в коде</span></div></div>
+            <div class="bg-dark p-8 text-center"><div class="stat-num font-display text-4xl md:text-5xl" data-count="100" data-suffix="K+">0</div><div class="font-mono text-[10px] uppercase tracking-[0.25em] text-grayish mt-3"><span class="lang-en">Lines of code</span><span class="lang-ru">Строк кода</span></div></div>
+            <div class="bg-dark p-8 text-center"><div class="stat-num font-display text-4xl md:text-5xl" data-count="24" data-suffix="/7">0</div><div class="font-mono text-[10px] uppercase tracking-[0.25em] text-grayish mt-3"><span class="lang-en">Always shipping</span><span class="lang-ru">Всегда в релизе</span></div></div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-16 px-6 md:px-12 max-w-7xl mx-auto z-10 relative fade-up">
+        <div class="mb-10"><h3 class="font-display text-xl font-bold uppercase tracking-tight flex items-center gap-4 text-grayish"><span class="text-gray-600">/</span> <span class="lang-en">about</span><span class="lang-ru">о себе</span><div class="h-px bg-gray-800 flex-grow ml-4"></div></h3></div>
+        <div class="about-grid">
+            <div class="about-terminal">
+                <div class="about-terminal-bar"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span><span class="term-title">crlx1q — profile.json</span></div>
+                <div class="about-body" id="about-body">
+                    <div class="about-line"><span class="ak">"name"</span><span class="ak">:&nbsp;</span><span class="av">"CRLX1Q"</span><span class="ak">,</span></div>
+                    <div class="about-line"><span class="ak">"role"</span><span class="ak">:&nbsp;</span><span class="av">"Software Developer"</span><span class="ak">,</span></div>
+                    <div class="about-line"><span class="ak">"focus"</span><span class="ak">:&nbsp;</span><span class="ac"><span class="lang-en">["scalable arch", "neural nets", "aesthetic UI"]</span><span class="lang-ru">["масштаб. архитектура", "нейросети", "эстетичный UI"]</span></span><span class="ak">,</span></div>
+                    <div class="about-line"><span class="ak">"location"</span><span class="ak">:&nbsp;</span><span class="av"><span class="lang-en">"Kazakhstan"</span><span class="lang-ru">"Казахстан"</span></span><span class="ak">,</span></div>
+                    <div class="about-line"><span class="empty"></span></div>
+                    <div class="about-line"><span class="ak">"currently"</span><span class="ak">:&nbsp;</span><span class="am"><span class="lang-en">"building UMA messenger"</span><span class="lang-ru">"разрабатываю UMA messenger"</span></span><span class="ak">,</span></div>
+                    <div class="about-line"><span class="ak">"available"</span><span class="ak">:&nbsp;</span><span class="ac">true</span></div>
+                </div>
+            </div>
+            <div class="about-terminal about-skills-panel">
+                <div class="about-terminal-bar"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span><span class="term-title">crlx1q — skills.sh</span></div>
+                <div class="about-body">
+                    <div class="skills-header about-line"><span class="ak">$ </span><span class="ac">neofetch --skills</span></div>
+                    <div class="about-line"><span class="empty"></span></div>
+                    <div class="skill-row about-line" data-pct="88"><span class="skill-name ak">Backend</span><div class="skill-bar-wrap"><div class="skill-bar-fill"></div></div><span class="skill-pct">0%</span></div>
+                    <div class="skill-row about-line" data-pct="80"><span class="skill-name ak">Frontend</span><div class="skill-bar-wrap"><div class="skill-bar-fill"></div></div><span class="skill-pct">0%</span></div>
+                    <div class="skill-row about-line" data-pct="72"><span class="skill-name ak">ML / AI</span><div class="skill-bar-wrap"><div class="skill-bar-fill"></div></div><span class="skill-pct">0%</span></div>
+                    <div class="skill-row about-line" data-pct="65"><span class="skill-name ak">DevOps</span><div class="skill-bar-wrap"><div class="skill-bar-fill"></div></div><span class="skill-pct">0%</span></div>
+                    <div class="skill-row about-line" data-pct="78"><span class="skill-name ak">Systems</span><div class="skill-bar-wrap"><div class="skill-bar-fill"></div></div><span class="skill-pct">0%</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stack Marquee -->
+    <section id="stack" class="py-16 px-6 md:px-12 max-w-7xl mx-auto z-10 relative fade-up">
+        <div class="marquee">
+            <div class="marquee-track">
+                <span class="chip">TypeScript</span><span class="chip">React</span><span class="chip">Next.js</span><span class="chip">Node.js</span><span class="chip">Go</span><span class="chip">Python</span><span class="chip">PyTorch</span><span class="chip">PostgreSQL</span><span class="chip">Redis</span><span class="chip">Docker</span><span class="chip">K8s</span><span class="chip">Rust</span>
+                <span class="chip" aria-hidden="true">TypeScript</span><span class="chip" aria-hidden="true">React</span><span class="chip" aria-hidden="true">Next.js</span><span class="chip" aria-hidden="true">Node.js</span><span class="chip" aria-hidden="true">Go</span><span class="chip" aria-hidden="true">Python</span><span class="chip" aria-hidden="true">PyTorch</span><span class="chip" aria-hidden="true">PostgreSQL</span><span class="chip" aria-hidden="true">Redis</span><span class="chip" aria-hidden="true">Docker</span><span class="chip" aria-hidden="true">K8s</span><span class="chip" aria-hidden="true">Rust</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Projects Section -->
+    <section id="projects" class="py-24 px-6 md:px-12 max-w-7xl mx-auto z-10 relative">
+        <div class="mb-16 fade-up">
+            <h3 class="font-display text-3xl font-bold uppercase tracking-tight flex items-center gap-4">
+                <span class="text-gray-600">/</span> <span class="lang-en">projects</span><span class="lang-ru">проекты</span>
+                <div class="h-px bg-gray-800 flex-grow ml-4"></div>
+            </h3>
+        </div>
+
+        <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- rendered by JS from PROJECTS array below -->
+        </div>
+    </section>
+
+    <!-- BLOG SECTION (Notes) -->
+    <section id="blog" class="py-16 px-6 md:px-12 max-w-7xl mx-auto z-10 relative fade-up">
+        <div class="mb-10">
+            <h3 class="font-display text-xl font-bold uppercase tracking-tight flex items-center gap-4 text-grayish">
+                <span class="text-gray-600">/</span> <span class="lang-en">notes & thoughts</span><span class="lang-ru">заметки и мысли</span>
+                <div class="h-px bg-gray-800 flex-grow ml-4"></div>
+            </h3>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Blog Card 1 -->
+            <a href="#" class="block p-6 bg-[#080808] border border-white/5 hover:border-white/20 transition-colors group relative overflow-hidden">
+                <span class="absolute top-0 left-0 w-1 h-full bg-gray-800 group-hover:bg-white transition-colors"></span>
+                <div class="font-mono text-[10px] text-gray-500 uppercase tracking-widest mb-3 flex gap-4">
+                    <span>2026.05.28</span>
+                    <span>5 min read</span>
+                </div>
+                <h4 class="text-lg font-medium text-white mb-2 group-hover:text-gray-200">
+                    <span class="lang-en">UMA Architecture: How we achieved 0ms latency</span>
+                    <span class="lang-ru">Архитектура UMA: как мы добились 0ms latency</span>
+                </h4>
+                <p class="text-sm text-gray-400 line-clamp-2">
+                    <span class="lang-en">A breakdown of technical solutions, custom WebSockets, and database optimization to ensure instant message delivery.</span>
+                    <span class="lang-ru">Разбор технических решений, кастомных вебсокетов и оптимизации базы данных для обеспечения мгновенной доставки сообщений.</span>
+                </p>
+            </a>
+            <!-- Blog Card 2 -->
+            <a href="#" class="block p-6 bg-[#080808] border border-white/5 hover:border-white/20 transition-colors group relative overflow-hidden">
+                <span class="absolute top-0 left-0 w-1 h-full bg-gray-800 group-hover:bg-white transition-colors"></span>
+                <div class="font-mono text-[10px] text-gray-500 uppercase tracking-widest mb-3 flex gap-4">
+                    <span>2026.04.15</span>
+                    <span>3 min read</span>
+                </div>
+                <h4 class="text-lg font-medium text-white mb-2 group-hover:text-gray-200">
+                    <span class="lang-en">Neural Networks on Client: PyTorch -> ONNX</span>
+                    <span class="lang-ru">Нейросети на клиенте: PyTorch -> ONNX</span>
+                </h4>
+                <p class="text-sm text-gray-400 line-clamp-2">
+                    <span class="lang-en">How to run a heavy computer vision model directly in the user's browser without losing accuracy.</span>
+                    <span class="lang-ru">Как запустить тяжелую модель компьютерного зрения прямо в браузере пользователя без потери точности.</span>
+                </p>
+            </a>
+        </div>
+        <div class="mt-6 text-right">
+            <a href="/notes" onclick="event.preventDefault();if(window.__spaNav)window.__spaNav('/notes');" class="font-mono text-xs uppercase tracking-widest text-gray-500 hover:text-white transition-colors"><span class="lang-en">View all notes -></span><span class="lang-ru">Все заметки -></span></a>
+        </div>
+    </section>
+
+    <!-- COMMUNITY BOARD (Guestbook / Sticky notes) -->
+    <section id="board" class="py-24 px-6 md:px-12 max-w-7xl mx-auto z-10 relative fade-up">
+        <div class="mb-10">
+            <h3 class="font-display text-xl font-bold uppercase tracking-tight flex items-center gap-4 text-grayish">
+                <span class="text-gray-600">/</span> <span class="lang-en">community board</span><span class="lang-ru">гостевая доска</span>
+                <div class="h-px bg-gray-800 flex-grow ml-4"></div>
+            </h3>
+            <p class="font-mono text-xs text-gray-500 mt-2"><span class="lang-en">Leave an idea, feedback, or just say hi.</span><span class="lang-ru">Оставь идею, фидбек или просто поздоровайся.</span></p>
+        </div>
+        
+        <!-- Input Form -->
+        <div class="mb-12 flex flex-col max-w-2xl w-full">
+            <div id="note-input-wrap" class="p-1 bg-white/5 border border-white/10 rounded-lg flex items-center shadow-lg transition-all duration-300">
+                <input type="text" id="note-input" data-en-placeholder="Write something..." data-ru-placeholder="Напиши что-нибудь..." placeholder="Напиши что-нибудь..." class="flex-1 bg-transparent text-white font-mono text-sm px-4 py-3 focus:outline-none min-w-0" maxlength="120">
+                <span id="char-counter" class="font-mono text-[10px] text-gray-500 mr-4 shrink-0 transition-colors">0/120</span>
+                <button id="add-note-btn" class="shrink-0 font-mono text-xs px-6 py-3 bg-white text-black hover:bg-gray-300 transition-colors uppercase tracking-widest rounded-md font-bold"><span class="lang-en">Post Note</span><span class="lang-ru">Отправить</span></button>
+            </div>
+            <!-- Warning Alert (Hidden by default) -->
+            <div class="h-4 mt-2 px-2 flex items-center pointer-events-none">
+                <span id="char-warning" class="font-mono text-[10px] text-red-500 uppercase tracking-widest opacity-0 transition-opacity duration-300 flex items-center gap-2">
+                    <span class="inline-block animate-pulse emoji">⚠️</span>
+                    [ SYS.ERR ] Buffer overflow. 120 chars max.
+                </span>
+            </div>
+        </div>
+
+        <!-- Notes Grid (Masonry effect using CSS Columns) -->
+        <div id="notes-masonry" class="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6">
+            <!-- Notes injected by JS -->
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact" class="py-12 border-t border-gray-900 z-10 relative mt-10">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center gap-3">
+                    <img src="/logo.png" alt="CRLX1Q" class="theme-protect" style="width:32px;height:32px;object-fit:contain;opacity:0.6;transition:opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                    <div class="font-mono text-gray-500 text-sm">© <span id="footer-year">2026</span> CRLX1Q. <span class="lang-en">All rights reserved.</span><span class="lang-ru">Все права защищены.</span></div>
+                </div>
+                <div class="flex items-center gap-2 font-mono text-[10px] text-gray-700 tracking-widest uppercase select-none">
+                    <span class="inline-flex items-center gap-1.5 border border-gray-800 rounded px-2 py-0.5 hover:border-gray-600 hover:text-gray-500 transition-colors duration-300 cursor-default">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="opacity-60"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                        <span id="server-version">v2.4.1</span>
+                    </span>
+                    <span class="text-gray-800">·</span>
+                    <span class="text-gray-700" title="Build date">build&nbsp;<span class="text-gray-600">2026.05.29</span></span>
+                    <span class="text-gray-800">·</span>
+                    <span id="footer-uptime-badge" class="inline-flex items-center gap-1" title="Session uptime">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-600 opacity-70 animate-pulse"></span>
+                        <span id="footer-uptime">00:00:00</span>
+                    </span>
+                </div>
+            </div>
+            <div class="flex gap-8 font-mono text-sm">
+                <a href="https://github.com/crlx1q" target="_blank" rel="noopener" class="text-gray-400 hover:text-white transition-colors">[ GitHub ]</a>
+                <a href="https://t.me/Alisheruy" target="_blank" rel="noopener" class="text-gray-400 hover:text-white transition-colors">[ Telegram ]</a>
+                <a href="mailto:contact@crlx1q.pro" class="text-gray-400 hover:text-white transition-colors">[ Email ]</a>
+            </div>
+        </div>
+    </footer>
+
+    </div><!-- /content-wrap -->
+
+    <!-- SPA: Notes Page -->
+    <div id="spa-notes" class="spa-page">
+        <div class="spa-page-header">
+            <a href="/" class="spa-back-btn" onclick="event.preventDefault();if(window.__spaNav)window.__spaNav('/');">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                <span class="lang-en">Back</span><span class="lang-ru">Назад</span>
+            </a>
+            <h1><span class="lang-en">/ notes & thoughts</span><span class="lang-ru">/ заметки и мысли</span></h1>
+            <p><span class="lang-en">Technical articles, dev logs, and random thoughts</span><span class="lang-ru">Технические статьи, девлоги и случайные мысли</span></p>
+        </div>
+        <div class="max-w-[900px] mx-auto px-6 pb-24">
+            <div class="grid grid-cols-1 gap-4">
+                <!-- Note 1 -->
+                <a href="#" class="block p-6 bg-[#080808] border border-white/5 hover:border-white/20 transition-colors group relative overflow-hidden">
+                    <span class="absolute top-0 left-0 w-1 h-full bg-gray-800 group-hover:bg-white transition-colors"></span>
+                    <div class="font-mono text-[10px] text-gray-500 uppercase tracking-widest mb-3 flex gap-4">
+                        <span>2026.05.28</span>
+                        <span>5 min read</span>
+                    </div>
+                    <h4 class="text-lg font-medium text-white mb-2 group-hover:text-gray-200">
+                        <span class="lang-en">UMA Architecture: How we achieved 0ms latency</span>
+                        <span class="lang-ru">Архитектура UMA: как мы добились 0ms latency</span>
+                    </h4>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        <span class="lang-en">A breakdown of technical solutions, custom WebSockets, and database optimization to ensure instant message delivery. We dive deep into the architecture decisions that made UMA's real-time communication nearly instantaneous.</span>
+                        <span class="lang-ru">Разбор технических решений, кастомных вебсокетов и оптимизации базы данных для обеспечения мгновенной доставки сообщений. Погружение в архитектурные решения, которые сделали коммуникацию в UMA практически мгновенной.</span>
+                    </p>
+                    <div class="flex gap-3 mt-4">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">WebSockets</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Architecture</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Performance</span>
+                    </div>
+                </a>
+                <!-- Note 2 -->
+                <a href="#" class="block p-6 bg-[#080808] border border-white/5 hover:border-white/20 transition-colors group relative overflow-hidden">
+                    <span class="absolute top-0 left-0 w-1 h-full bg-gray-800 group-hover:bg-white transition-colors"></span>
+                    <div class="font-mono text-[10px] text-gray-500 uppercase tracking-widest mb-3 flex gap-4">
+                        <span>2026.04.15</span>
+                        <span>3 min read</span>
+                    </div>
+                    <h4 class="text-lg font-medium text-white mb-2 group-hover:text-gray-200">
+                        <span class="lang-en">Neural Networks on Client: PyTorch -> ONNX</span>
+                        <span class="lang-ru">Нейросети на клиенте: PyTorch -> ONNX</span>
+                    </h4>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        <span class="lang-en">How to run a heavy computer vision model directly in the user's browser without losing accuracy. Converting PyTorch models to ONNX format for client-side inference.</span>
+                        <span class="lang-ru">Как запустить тяжелую модель компьютерного зрения прямо в браузере пользователя без потери точности. Конвертация моделей PyTorch в формат ONNX для инференса на стороне клиента.</span>
+                    </p>
+                    <div class="flex gap-3 mt-4">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">PyTorch</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">ONNX</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Computer Vision</span>
+                    </div>
+                </a>
+                <!-- Note 3 -->
+                <a href="#" class="block p-6 bg-[#080808] border border-white/5 hover:border-white/20 transition-colors group relative overflow-hidden">
+                    <span class="absolute top-0 left-0 w-1 h-full bg-gray-800 group-hover:bg-white transition-colors"></span>
+                    <div class="font-mono text-[10px] text-gray-500 uppercase tracking-widest mb-3 flex gap-4">
+                        <span>2026.03.22</span>
+                        <span>4 min read</span>
+                    </div>
+                    <h4 class="text-lg font-medium text-white mb-2 group-hover:text-gray-200">
+                        <span class="lang-en">Building a real-time task tracker with WebSockets</span>
+                        <span class="lang-ru">Создание real-time таск-трекера на вебсокетах</span>
+                    </h4>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        <span class="lang-en">A deep dive into how Tasco uses WebSocket connections for real-time collaboration. Architecture patterns for handling concurrent task updates across distributed teams.</span>
+                        <span class="lang-ru">Погружение в то, как Tasco использует WebSocket-соединения для совместной работы в реальном времени. Архитектурные паттерны для обработки конкурентных обновлений задач в распределённых командах.</span>
+                    </p>
+                    <div class="flex gap-3 mt-4">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">TypeScript</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">WebSockets</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Redis</span>
+                    </div>
+                </a>
+                <!-- Note 4 -->
+                <a href="#" class="block p-6 bg-[#080808] border border-white/5 hover:border-white/20 transition-colors group relative overflow-hidden">
+                    <span class="absolute top-0 left-0 w-1 h-full bg-gray-800 group-hover:bg-white transition-colors"></span>
+                    <div class="font-mono text-[10px] text-gray-500 uppercase tracking-widest mb-3 flex gap-4">
+                        <span>2026.02.10</span>
+                        <span>6 min read</span>
+                    </div>
+                    <h4 class="text-lg font-medium text-white mb-2 group-hover:text-gray-200">
+                        <span class="lang-en">NLP-powered content moderation: the AntiMat story</span>
+                        <span class="lang-ru">NLP-модерация контента: история AntiMat</span>
+                    </h4>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        <span class="lang-en">How we built a Telegram bot that understands context-sensitive profanity filtering. Challenges of multi-language NLP, handling slang, and achieving 98% accuracy.</span>
+                        <span class="lang-ru">Как мы создали Telegram-бота, который понимает контекстную фильтрацию ненормативной лексики. Сложности мультиязычной NLP, обработка сленга и достижение 98% точности.</span>
+                    </p>
+                    <div class="flex gap-3 mt-4">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Python</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">NLP</span>
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest border border-white/5 px-2 py-0.5 rounded">Telegram API</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPA: Board Page -->
+    <div id="spa-board" class="spa-page">
+        <div class="spa-page-header">
+            <a href="/" class="spa-back-btn" onclick="event.preventDefault();if(window.__spaNav)window.__spaNav('/');">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                <span class="lang-en">Back</span><span class="lang-ru">Назад</span>
+            </a>
+            <h1><span class="lang-en">/ community board</span><span class="lang-ru">/ гостевая доска</span></h1>
+            <p><span class="lang-en">Leave an idea, feedback, or just say hi</span><span class="lang-ru">Оставь идею, фидбек или просто поздоровайся</span></p>
+        </div>
+        <div class="max-w-[900px] mx-auto px-6 pb-24">
+            <!-- Board Input -->
+            <div class="mb-12 flex flex-col max-w-2xl w-full">
+                <div id="spa-board-input-wrap" class="p-1 bg-white/5 border border-white/10 rounded-lg flex items-center shadow-lg transition-all duration-300">
+                    <input type="text" id="spa-board-input" data-en-placeholder="Write something..." data-ru-placeholder="Напиши что-нибудь..." placeholder="Write something..." class="flex-1 bg-transparent text-white font-mono text-sm px-4 py-3 focus:outline-none min-w-0" maxlength="120">
+                    <span id="spa-board-char-counter" class="font-mono text-[10px] text-gray-500 mr-4 shrink-0 transition-colors">0/120</span>
+                    <button id="spa-board-add-btn" class="shrink-0 font-mono text-xs px-6 py-3 bg-white text-black hover:bg-gray-300 transition-colors uppercase tracking-widest rounded-md font-bold"><span class="lang-en">Post Note</span><span class="lang-ru">Отправить</span></button>
+                </div>
+                <div class="h-4 mt-2 px-2 flex items-center pointer-events-none">
+                    <span id="spa-board-warning" class="font-mono text-[10px] text-red-500 uppercase tracking-widest opacity-0 transition-opacity duration-300 flex items-center gap-2">
+                        <span class="inline-block animate-pulse emoji">⚠️</span>
+                        [ SYS.ERR ] Buffer overflow. 120 chars max.
+                    </span>
+                </div>
+            </div>
+            <!-- Board Notes Grid -->
+            <div id="spa-board-notes" class="columns-1 sm:columns-2 md:columns-3 gap-6">
+                <!-- Notes injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+
+        // Site uptime — measured from page load
+        window.__siteStartTime = Date.now();
+
+        const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const isTouch = matchMedia('(hover: none), (pointer: coarse)').matches;
+        const DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+
+        // ============================================================
+        // SPA ROUTER
+        // ============================================================
+        const contentWrap = document.getElementById('content-wrap');
+        const spaNotes = document.getElementById('spa-notes');
+        const spaBoard = document.getElementById('spa-board');
+
+        function spaNavigate(path) {
+            // Close mobile menu if open
+            if (typeof closeMobileMenu === 'function') closeMobileMenu();
+
+            // Hide all SPA pages
+            contentWrap.style.display = '';
+            spaNotes.classList.remove('active');
+            spaBoard.classList.remove('active');
+
+            if (path === '/notes') {
+                contentWrap.style.display = 'none';
+                spaNotes.classList.add('active');
+                document.title = 'CRLX1Q | Notes';
+                window.scrollTo(0, 0);
+            } else if (path === '/board') {
+                contentWrap.style.display = 'none';
+                spaBoard.classList.add('active');
+                document.title = 'CRLX1Q | Board';
+                window.scrollTo(0, 0);
+                initSpaBoardNotes();
+            } else {
+                document.title = 'CRLX1Q | Software Developer';
+                // Handle hash navigation
+                if (path.includes('#')) {
+                    const hash = path.split('#')[1];
+                    if (hash) {
+                        setTimeout(() => {
+                            const el = document.getElementById(hash);
+                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }, 100);
+                    }
+                }
+            }
+
+            history.pushState(null, '', path);
+        }
+
+        window.__spaNav = spaNavigate;
+
+        // Handle browser back/forward
+        window.addEventListener('popstate', () => {
+            const path = location.pathname;
+            contentWrap.style.display = '';
+            spaNotes.classList.remove('active');
+            spaBoard.classList.remove('active');
+
+            if (path === '/notes') {
+                contentWrap.style.display = 'none';
+                spaNotes.classList.add('active');
+                document.title = 'CRLX1Q | Notes';
+            } else if (path === '/board') {
+                contentWrap.style.display = 'none';
+                spaBoard.classList.add('active');
+                document.title = 'CRLX1Q | Board';
+                initSpaBoardNotes();
+            } else {
+                document.title = 'CRLX1Q | Software Developer';
+            }
+        });
+
+        // Handle initial route on page load
+        if (location.pathname === '/notes') {
+            contentWrap.style.display = 'none';
+            spaNotes.classList.add('active');
+            document.title = 'CRLX1Q | Notes';
+        } else if (location.pathname === '/board') {
+            contentWrap.style.display = 'none';
+            spaBoard.classList.add('active');
+            document.title = 'CRLX1Q | Board';
+        }
+
+        // ============================================================
+        // SPA BOARD PAGE LOGIC
+        // ============================================================
+        let spaBoardLoaded = false;
+        
+        const escapeHTMLSafe = str => {
+            if (!str) return '';
+            let escaped = str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag]));
+            return escaped.replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, '<span class="emoji">$1</span>');
+        };
+
+        function createSpaBoardNote(note) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'break-inside-avoid mb-6 w-full inline-block';
+            wrapper.innerHTML = `
+                <div class="relative p-5 bg-[#0a0a0a] border border-white/10 group hover:border-white/30 transition-all duration-300 hover:-translate-y-1 shadow-lg sticky-note" style="transform: rotate(${note.rot || 0}deg)">
+                    <p class="font-sans text-sm text-gray-300 leading-relaxed mb-4 break-words whitespace-pre-wrap">${escapeHTMLSafe(note.text)}</p>
+                    <div class="flex justify-between items-center border-t border-gray-800 pt-2 mt-auto">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest">${new Date(note.date || Date.now()).toLocaleDateString('en-GB')}</span>
+                        <span class="font-mono text-[10px] text-gray-500">- ${escapeHTMLSafe(note.author)}</span>
+                    </div>
+                </div>
+            `;
+            return wrapper;
+        }
+
+        function initSpaBoardNotes() {
+            const container = document.getElementById('spa-board-notes');
+            if (!container) return;
+            
+            fetch('/api/notes')
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        container.innerHTML = '';
+                        data.forEach(n => container.appendChild(createSpaBoardNote(n)));
+                    }
+                })
+                .catch(() => console.error('Failed to load board notes'));
+        }
+
+        // Board page input handlers
+        const spaBoardInput = document.getElementById('spa-board-input');
+        const spaBoardAddBtn = document.getElementById('spa-board-add-btn');
+        const spaBoardCounter = document.getElementById('spa-board-char-counter');
+        const spaBoardWrap = document.getElementById('spa-board-input-wrap');
+        const spaBoardWarning = document.getElementById('spa-board-warning');
+
+        spaBoardInput?.addEventListener('input', () => {
+            const len = spaBoardInput.value.length;
+            spaBoardCounter.textContent = `${len}/120`;
+            if (len >= 120) {
+                spaBoardCounter.style.color = '#ef4444';
+                spaBoardWrap.classList.add('input-error-glow');
+            } else {
+                spaBoardCounter.style.color = '';
+                spaBoardWrap.classList.remove('input-error-glow');
+                spaBoardWarning.classList.remove('opacity-100');
+            }
+        });
+
+        async function handleSpaBoardPost() {
+            const val = spaBoardInput.value.trim().substring(0, 120);
+            if (!val) return;
+            
+            spaBoardAddBtn.disabled = true;
+            spaBoardAddBtn.style.opacity = '0.5';
+
+            try {
+                const res = await fetch('/api/notes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: val })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    spaBoardWarning.innerHTML = `<span class="inline-block animate-pulse emoji">⚠️</span> [ SYS.ERR ] ${data.error || 'ERROR'}`;
+                    spaBoardWarning.classList.add('opacity-100');
+                    setTimeout(() => spaBoardWarning.classList.remove('opacity-100'), 3500);
+                } else {
+                    const container = document.getElementById('spa-board-notes');
+                    container.prepend(createSpaBoardNote(data));
+                    spaBoardInput.value = '';
+                    spaBoardInput.dispatchEvent(new Event('input'));
+                    // Also update the main page board
+                    const mainBoard = document.getElementById('notes-masonry');
+                    if (mainBoard) {
+                        const mainNote = createSpaBoardNote(data);
+                        mainBoard.prepend(mainNote);
+                    }
+                }
+            } catch (err) {
+                spaBoardWarning.innerHTML = `<span class="inline-block animate-pulse emoji">⚠️</span> [ SYS.ERR ] CONNECTION ERROR`;
+                spaBoardWarning.classList.add('opacity-100');
+                setTimeout(() => spaBoardWarning.classList.remove('opacity-100'), 3500);
+            } finally {
+                spaBoardAddBtn.disabled = false;
+                spaBoardAddBtn.style.opacity = '1';
+            }
+        }
+
+        spaBoardAddBtn?.addEventListener('click', handleSpaBoardPost);
+        spaBoardInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleSpaBoardPost();
+        });
+
+        // Init board if starting on /board
+        if (location.pathname === '/board') {
+            setTimeout(initSpaBoardNotes, 100);
+        }
+
+        // ============================================================
+        // BRAND GLITCH ANIMATION
+        // ============================================================
+        const brandEl = document.getElementById('nav-brand-text');
+        const originalBrand = 'CRL.X1Q()';
+        const glyphPool = '#$%@!&*?~^<>/\\|+=;:';
+        function scheduleGlitch() { setTimeout(runGlitch, 2500 + Math.random() * 4500); }
+        function runGlitch() {
+            const count = 1 + Math.floor(Math.random() * 3);
+            const indices = [];
+            while (indices.length < count) { const i = Math.floor(Math.random() * originalBrand.length); if (!indices.includes(i)) indices.push(i); }
+            let frame = 0; const totalFrames = 6 + Math.floor(Math.random() * 6);
+            const interval = setInterval(() => {
+                let out = '';
+                for (let i = 0; i < originalBrand.length; i++) {
+                    out += (indices.includes(i) && frame < totalFrames - 1) ? glyphPool[Math.floor(Math.random() * glyphPool.length)] : originalBrand[i];
+                }
+                brandEl.textContent = out; frame++;
+                if (frame >= totalFrames) { clearInterval(interval); brandEl.textContent = originalBrand; scheduleGlitch(); }
+            }, 55);
+        }
+        scheduleGlitch();
+
+        // ============================================================
+        // LIFE STATUS WIDGET (TERMINAL STYLE)
+        // ============================================================
+        const lifeIcon = document.getElementById('life-icon');
+        const lifeText = document.getElementById('life-text');
+        const lifeTime = document.getElementById('life-time');
+
+        let hasBootedClock = false;
+        let currentSecDeg = 0;
+        let currentMinDeg = 0;
+        let currentHourDeg = 0;
+
+        function updateLifeWidget() {
+            if (!lifeIcon || !lifeText || !lifeTime) return;
+
+            const now = new Date();
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const kztTime = new Date(utc + (3600000 * 5));
+            const hours = kztTime.getHours();
+            const minutes = kztTime.getMinutes();
+            const seconds = kztTime.getSeconds();
+
+            lifeTime.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+            let icon = '', text = '';
+            // Эмодзи обернуты в .emoji для защиты цвета при светлой теме
+            if (hours >= 2 && hours < 10) {
+                icon = '<svg class="inline-block w-4 h-4 text-indigo-400 theme-protect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>'; text = '<span class="lang-en">Sleep</span><span class="lang-ru">Сон</span>';
+            } else if (hours >= 10 && hours < 13) {
+                icon = '<svg class="inline-block w-4 h-4 text-yellow-400 theme-protect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>'; text = '<span class="lang-en">Awake</span><span class="lang-ru">Проснулся</span>';
+            } else if (hours >= 13 && hours < 14) {
+                icon = '<svg class="inline-block w-4 h-4 text-orange-400 theme-protect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>'; text = '<span class="lang-en">Lunch</span><span class="lang-ru">Обед</span>';
+            } else if (hours >= 14 && hours < 21) {
+                icon = '<span class="text-green-400 font-bold tracking-tighter theme-protect">&lt;/&gt;</span>'; 
+                text = '<span class="lang-en">Coding</span><span class="lang-ru">Программирование</span>';
+            } else {
+                icon = '<svg class="inline-block w-4 h-4 text-purple-400 theme-protect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><line x1="6" y1="12" x2="10" y2="12"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line><rect x="2" y="6" width="20" height="12" rx="2"></rect></svg>'; text = '<span class="lang-en">Gaming</span><span class="lang-ru">Игры</span>';
+            }
+            
+            lifeIcon.innerHTML = icon;
+            lifeText.innerHTML = text; 
+
+            // Clock mechanism representation
+            if (!window.__bootDone) return;
+
+            const clockH = document.getElementById('clock-h');
+            const clockM = document.getElementById('clock-m');
+            const clockS = document.getElementById('clock-s');
+
+            const targetSecDeg = seconds * 6;
+            const targetMinDeg = minutes * 6 + seconds * 0.1;
+            const targetHourDeg = (hours % 12) * 30 + minutes * 0.5;
+
+            if (!hasBootedClock) {
+                currentSecDeg = targetSecDeg + 360 * 2;
+                currentMinDeg = targetMinDeg + 360;
+                currentHourDeg = targetHourDeg + 360;
+                hasBootedClock = true;
+
+                setTimeout(() => {
+                    if(clockS) clockS.style.transition = 'transform 0.2s cubic-bezier(0.4, 2.0, 0.2, 1)';
+                    if(clockM) clockM.style.transition = 'transform 0.2s cubic-bezier(0.4, 2.0, 0.2, 1)';
+                    if(clockH) clockH.style.transition = 'transform 0.2s cubic-bezier(0.4, 2.0, 0.2, 1)';
+                }, 1500);
+            } else {
+                let diffS = targetSecDeg - (currentSecDeg % 360);
+                if (diffS < 0) diffS += 360;
+                currentSecDeg += diffS;
+
+                let diffM = targetMinDeg - (currentMinDeg % 360);
+                if (diffM < 0) diffM += 360;
+                currentMinDeg += diffM;
+
+                let diffH = targetHourDeg - (currentHourDeg % 360);
+                if (diffH < 0) diffH += 360;
+                currentHourDeg += diffH;
+            }
+
+            if (clockS) clockS.style.transform = `rotate(${currentSecDeg}deg)`;
+            if (clockM) clockM.style.transform = `rotate(${currentMinDeg}deg)`;
+            if (clockH) clockH.style.transform = `rotate(${currentHourDeg}deg)`;
+        }
+        
+        setInterval(updateLifeWidget, 1000);
+        updateLifeWidget();
+
+        // Uptime counter (оставлен только для футера)
+        let serverStartTime = window.__siteStartTime || Date.now();
+        fetch('/api/init')
+            .then(res => res.json())
+            .then(data => {
+                if (data.uptime) {
+                    serverStartTime = Date.now() - (data.uptime * 1000);
+                }
+                if (data.version) {
+                    const v = document.getElementById('server-version');
+                    if (v) v.textContent = 'v' + data.version;
+                }
+                if (data.lang) {
+                    document.documentElement.lang = data.lang;
+                }
+            })
+            .catch(() => {});
+
+        function updateUptime() {
+            const elFooter = document.getElementById('footer-uptime');
+            if (!elFooter) return;
+            const elapsed = Math.max(0, Math.floor((Date.now() - serverStartTime) / 1000));
+            
+            const y = Math.floor(elapsed / 31536000);
+            const mo = Math.floor((elapsed % 31536000) / 2592000);
+            const d = Math.floor((elapsed % 2592000) / 86400);
+            const h = Math.floor((elapsed % 86400) / 3600);
+            const m = Math.floor((elapsed % 3600) / 60);
+            const s = elapsed % 60;
+            
+            let str = '';
+            if (y > 0) str += y + 'y ';
+            if (mo > 0) str += mo + 'mo ';
+            if (d > 0) str += d + 'd ';
+            str += `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            
+            elFooter.textContent = str;
+        }
+        setInterval(updateUptime, 1000);
+        updateUptime();
+
+        const existingBootCb = window.__onBootDone;
+        window.__onBootDone = () => {
+            if (existingBootCb) existingBootCb();
+            updateLifeWidget();
+        };
+
+        // ============================================================
+        // COMMUNITY BOARD (DOM-based Sticky Notes)
+        // ============================================================
+        const notesContainer = document.getElementById('notes-masonry');
+        const noteInput = document.getElementById('note-input');
+        const addNoteBtn = document.getElementById('add-note-btn');
+        const noteInputWrap = document.getElementById('note-input-wrap');
+        const charCounter = document.getElementById('char-counter');
+        const charWarning = document.getElementById('char-warning');
+        
+        const MAX_CHARS = 120;
+        let shakeTimeout;
+
+        // Escape HTML и автоматическая обертка ВСЕХ эмодзи в класс .emoji для защиты их цвета
+        const escapeHTML = str => {
+            if (!str) return '';
+            let escaped = str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag]));
+            return escaped.replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, '<span class="emoji">$1</span>');
+        };
+
+        function createNoteEl(note) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'break-inside-avoid mb-6 w-full inline-block';
+            wrapper.innerHTML = `
+                <div class="relative p-5 bg-[#0a0a0a] border border-white/10 group hover:border-white/30 transition-all duration-300 hover:-translate-y-1 shadow-lg sticky-note" style="transform: rotate(${note.rot || 0}deg)">
+                    <p class="font-sans text-sm text-gray-300 leading-relaxed mb-4 break-words whitespace-pre-wrap">${escapeHTML(note.text)}</p>
+                    <div class="flex justify-between items-center border-t border-gray-800 pt-2 mt-auto">
+                        <span class="font-mono text-[9px] text-gray-600 uppercase tracking-widest">${new Date(note.date || Date.now()).toLocaleDateString('en-GB')}</span>
+                        <span class="font-mono text-[10px] text-gray-500">- ${escapeHTML(note.author)}</span>
+                    </div>
+                </div>
+            `;
+            return wrapper;
+        }
+
+        if (notesContainer) {
+            fetch('/api/notes')
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        notesContainer.innerHTML = '';
+                        data.forEach(n => notesContainer.appendChild(createNoteEl(n)));
+                    }
+                })
+                .catch(() => console.error('Failed to load notes'));
+        }
+
+        noteInput?.addEventListener('input', () => {
+            const len = noteInput.value.length;
+            charCounter.textContent = `${len}/${MAX_CHARS}`;
+            
+            if (len >= MAX_CHARS) {
+                charCounter.classList.replace('text-gray-500', 'text-red-500');
+                noteInputWrap.classList.add('input-error-glow');
+            } else {
+                if (charCounter.classList.contains('text-red-500')) {
+                    charCounter.classList.replace('text-red-500', 'text-gray-500');
+                }
+                noteInputWrap.classList.remove('input-error-glow');
+                charWarning.classList.remove('opacity-100');
+            }
+        });
+
+        async function handleAddNote() {
+            const val = noteInput.value.trim().substring(0, MAX_CHARS);
+            if(!val) return;
+            
+            addNoteBtn.disabled = true;
+            addNoteBtn.style.opacity = '0.5';
+
+            try {
+                const res = await fetch('/api/notes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: val })
+                });
+                
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    showWarningMsg(data.error || 'ERROR SAVING NOTE');
+                } else {
+                    notesContainer.prepend(createNoteEl(data));
+                    noteInput.value = '';
+                    noteInput.dispatchEvent(new Event('input'));
+                }
+            } catch (err) {
+                alert('Connection error. Try again later.');
+            } finally {
+                addNoteBtn.disabled = false;
+                addNoteBtn.style.opacity = '1';
+            }
+        }
+        
+        addNoteBtn?.addEventListener('click', handleAddNote);
+        
+        function showWarningMsg(msg) {
+            noteInputWrap.classList.remove('animate-error-shake');
+            void noteInputWrap.offsetWidth;
+            noteInputWrap.classList.add('animate-error-shake');
+            charWarning.innerHTML = `<span class="inline-block animate-pulse emoji">⚠️</span> [ SYS.ERR ] ${msg}`;
+            charWarning.classList.add('opacity-100');
+            clearTimeout(shakeTimeout);
+            shakeTimeout = setTimeout(() => {
+                charWarning.classList.remove('opacity-100');
+            }, 3500);
+        }
+
+        noteInput?.addEventListener('keydown', (e) => { 
+            if(e.key === 'Enter') {
+                handleAddNote();
+                return;
+            }
+            if (noteInput.value.length >= MAX_CHARS && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                showWarningMsg('BUFFER OVERFLOW. 120 CHARS MAX.');
+            }
+        });
+
+        // ============================================================
+        // PROJECTS
+        // ============================================================
+        const grid = document.getElementById('projects-grid');
+        function buildCard(p) {
+            const a = document.createElement('a');
+            a.href = p.url || '#'; a.target = '_blank'; a.rel = 'noopener';
+            const statusHTML = p.status ? `<span class="card-status ${p.status}">${p.status === 'live' ? 'Live' : (p.status === 'offline' ? 'Offline' : 'WIP')}</span>` : '';
+            const tagsHTML = p.tags && p.tags.length ? `<div class="card-tags mt-4">${p.tags.map(t => `<span class="card-tag">${t}</span>`).join('')}</div>` : '';
+            
+            const isLive = p.status === 'live';
+            const metricsHTML = `
+                <div class="flex items-center gap-5 mt-5 font-mono text-[10px] text-gray-400 uppercase tracking-widest border-t border-gray-800 pt-4">
+                    <span class="flex items-center gap-1.5" title="Score">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        ${p.rating}/10
+                    </span>
+                    <span class="flex items-center gap-1.5" title="Server Availability">
+                        <span class="relative flex h-2 w-2">
+                            <span class="${isLive ? 'animate-ping' : 'hidden'} absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 color-dot-green"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 ${isLive ? 'bg-green-500 color-dot-green' : 'bg-yellow-500 color-dot-yellow'}"></span>
+                        </span>
+                        ${isLive ? p.uptime + '%' : 'Offline'}
+                    </span>
+                </div>
+            `;
+
+            a.className = `project-card p-8 flex flex-col justify-between group fade-up ${p.flagship ? 'uma-badge' : ''} ${p.wide ? 'md:col-span-2' : ''}`;
+            a.innerHTML = `
+                <span class="glow"></span>
+                <div>
+                    <div class="flex justify-between items-start mb-4">
+                        <h4 class="font-mono ${p.nameSize || 'text-2xl'} font-bold text-white">${p.name}</h4>
+                        <div class="flex items-center gap-2 ml-2 shrink-0">
+                            ${statusHTML}
+                            ${p.flagship ? '<span class="text-xs font-mono bg-white text-black px-2 py-1 rounded uppercase tracking-wider font-bold" style="text-shadow: none; box-shadow: none;">Flagship</span>' : ''}
+                        </div>
+                    </div>
+                    <p class="text-gray-400 ${p.descSize || 'text-sm'} leading-relaxed">${p.desc}</p>
+                    ${metricsHTML}
+                    ${tagsHTML}
+                </div>
+                <div class="flex items-center justify-between mt-6 pt-4">
+                    <span class="font-mono text-xs text-gray-500 group-hover:text-white transition-colors">${p.url ? p.url.replace('https://', '') : ''}</span>
+                    <span class="font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">-&gt;</span>
+                </div>`;
+            return a;
+        }
+
+        if (grid) {
+            fetch('/api/projects')
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        data.forEach(p => {
+                            const card = buildCard(p);
+                            grid.appendChild(card);
+                            setTimeout(() => card.classList.add('visible'), 50);
+                        });
+                    }
+                })
+                .catch(console.error);
+        }
+
+
+        // ============================================================
+        // CORE: SCROLL, CURSOR, BG, ASCII, TERMINAL + GLITCH BACKGROUND
+        // ============================================================
+        const fy = document.getElementById('footer-year'); if (fy) fy.textContent = new Date().getFullYear();
+        const progress = document.getElementById('scroll-progress'); const navbar = document.getElementById('navbar');
+        let progressTick = false, isScrolling = false, scrollEndTimer = null;
+        addEventListener('scroll', () => {
+            isScrolling = true; clearTimeout(scrollEndTimer); scrollEndTimer = setTimeout(() => { isScrolling = false; }, 120);
+            if (navbar) navbar.classList.toggle('scrolled', scrollY > 60);
+            if (progressTick) return; progressTick = true;
+            requestAnimationFrame(() => { const h = document.documentElement; progress.style.width = ((h.scrollTop / Math.max(1, (h.scrollHeight - h.clientHeight))) * 100) + '%'; progressTick = false; });
+        }, { passive: true });
+
+        const cursorDot = document.getElementById('cursor-dot'); const cursorOutline = document.getElementById('cursor-outline');
+        let mx = innerWidth / 2, my = innerHeight / 2, dotX = mx, dotY = my, outX = mx, outY = my, cursorActive = !isTouch && !prefersReduced;
+        if (!cursorActive) { cursorDot.style.display = 'none'; cursorOutline.style.display = 'none'; document.body.style.cursor = 'auto'; }
+        addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; }, { passive: true });
+        document.addEventListener('pointerover', (e) => { if (!cursorActive) return; if (e.target.closest('a, button, input, textarea')) cursorOutline.classList.add('is-hover'); });
+        document.addEventListener('pointerout', (e) => { if (!cursorActive) return; if (e.target.closest('a, button, input, textarea')) cursorOutline.classList.remove('is-hover'); });
+
+        // === GLITCH RIPPLE ON CLICK ===
+        const ripples = [];
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.closest('a, button, input, textarea, .project-card, .sticky-note, .about-terminal, .win11-header, #terminal, nav')) return;
+            ripples.push({
+                x: e.clientX,
+                y: e.clientY,
+                radius: 0,
+                speed: 12,
+                thickness: 12
+            });
+        });
+        // ==============================
+
+        const bgStatic = document.getElementById('bg-static'), bgDynamic = document.getElementById('bg-dynamic');
+        const sctx = bgStatic.getContext('2d', { alpha: true }), dctx = bgDynamic.getContext('2d', { alpha: true });
+        const FONT_SIZE = 16, CHARS = ['+','-','.',':','>','<','=','#','0','1','~','*','^','|'], RADIUS = 220;
+        const BG_EVERY = 3;           
+        const boostedCells = new Set(); 
+        let W = 0, H = 0, cols = 0, rows = 0, cells = [], prevMx = -9999, prevMy = -9999, rafId = null;
+        let globalAlphaBoost = 1;     
+        let needsFullRedraw = true;   
+        let bgFrame = 0;              
+        let shimmerActive = false, shimmerT0 = 0; 
+        
+        function resize() {
+            W = innerWidth; H = innerHeight;
+            [bgStatic, bgDynamic].forEach(c => { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); c.style.width = W + 'px'; c.style.height = H + 'px'; c.getContext('2d').setTransform(DPR, 0, 0, DPR, 0, 0); });
+            cols = Math.ceil(W / FONT_SIZE) + 1; rows = Math.ceil(H / FONT_SIZE) + 1; cells = new Array(cols * rows);
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    cells[y * cols + x] = { 
+                        x: x * FONT_SIZE + FONT_SIZE / 2, 
+                        y: y * FONT_SIZE + FONT_SIZE / 2, 
+                        char: CHARS[(Math.random() * CHARS.length) | 0], 
+                        baseAlpha: Math.random() * 0.06 + 0.03, 
+                        boost: 0, 
+                        scramble: 0 
+                    };
+                }
+            }
+            boostedCells.clear();
+            dctx.clearRect(0, 0, W, H); prevMx = prevMy = -9999;
+            drawStaticFull(); 
+        }
+
+        function drawStaticFull() {
+            sctx.clearRect(0, 0, W, H);
+            sctx.font = `${FONT_SIZE}px "JetBrains Mono", monospace`;
+            sctx.textAlign = 'center';
+            sctx.textBaseline = 'middle';
+            let cf = '';
+            for (let i = 0; i < cells.length; i++) {
+                const c = cells[i];
+                const a = Math.min(1, (c.baseAlpha + c.boost) * globalAlphaBoost);
+                if (a < 0.005) continue;
+                const f = `rgba(255,255,255,${a.toFixed(2)})`;
+                if (f !== cf) { sctx.fillStyle = f; cf = f; }
+                sctx.fillText(c.char, c.x, c.y);
+            }
+            needsFullRedraw = false;
+        }
+
+        function updateCells() {
+            if (Math.random() < 0.06) {
+                const cx = (Math.random() * cols) | 0, cy = (Math.random() * rows) | 0;
+                const rw = ((Math.random() * 3) | 0) + 1, rh = ((Math.random() * 3) | 0) + 1;
+                for (let y = cy - rh; y <= cy + rh; y++) {
+                    for (let x = cx - rw; x <= cx + rw; x++) {
+                        if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
+                        if (Math.random() < 0.7) {
+                            const idx = y * cols + x;
+                            cells[idx].boost = 0.9;
+                            cells[idx].scramble = ((Math.random() * 15) | 0) + 5;
+                            boostedCells.add(idx);
+                        }
+                    }
+                }
+            }
+
+            if (ripples.length > 0) {
+                for (let i = ripples.length - 1; i >= 0; i--) {
+                    const r = ripples[i];
+                    r.radius += r.speed;
+                    r.speed *= 0.90;
+                    
+                    const minX = Math.max(0, Math.floor((r.x - r.radius - r.thickness) / FONT_SIZE));
+                    const maxX = Math.min(cols - 1, Math.ceil((r.x + r.radius + r.thickness) / FONT_SIZE));
+                    const minY = Math.max(0, Math.floor((r.y - r.radius - r.thickness) / FONT_SIZE));
+                    const maxY = Math.min(rows - 1, Math.ceil((r.y + r.radius + r.thickness) / FONT_SIZE));
+                    
+                    for (let y = minY; y <= maxY; y++) {
+                        for (let x = minX; x <= maxX; x++) {
+                            const idx = y * cols + x;
+                            const c = cells[idx];
+                            const dist = Math.hypot(c.x - r.x, c.y - r.y);
+                            if (Math.abs(dist - r.radius) < r.thickness) {
+                                if (Math.random() < 0.1) {
+                                    c.boost = Math.max(c.boost, 0.5);
+                                    c.scramble = Math.max(c.scramble, ((Math.random() * 6) | 0) + 2);
+                                    boostedCells.add(idx);
+                                }
+                            }
+                        }
+                    }
+                    if (r.speed < 0.5) ripples.splice(i, 1);
+                }
+            }
+
+            if (needsFullRedraw) { drawStaticFull(); return; }
+            if (boostedCells.size === 0) return;
+
+            sctx.font = `${FONT_SIZE}px "JetBrains Mono", monospace`;
+            sctx.textAlign = 'center';
+            sctx.textBaseline = 'middle';
+            const done = [];
+            for (const idx of boostedCells) {
+                const c = cells[idx];
+                if (c.scramble > 0) { c.char = CHARS[(Math.random() * CHARS.length) | 0]; c.scramble--; }
+                if (c.boost > 0.01) c.boost *= 0.93; else { c.boost = 0; done.push(idx); }
+
+                const px = c.x - FONT_SIZE * 0.5 - 1, py = c.y - FONT_SIZE * 0.5 - 1;
+                sctx.clearRect(px, py, FONT_SIZE + 2, FONT_SIZE + 2);
+                const a = Math.min(1, (c.baseAlpha + c.boost) * globalAlphaBoost);
+                if (a >= 0.005) {
+                    sctx.fillStyle = `rgba(255,255,255,${a.toFixed(2)})`;
+                    sctx.fillText(c.char, c.x, c.y);
+                }
+            }
+            for (const idx of done) boostedCells.delete(idx);
+        }
+
+        function flashStatic(peak, durationMs) {
+            const start = performance.now(), half = durationMs / 2;
+            function tick(now) {
+                const t = now - start;
+                globalAlphaBoost = t <= half  ? 1 + (peak - 1) * (t / half) :
+                                   t < durationMs ? peak - (peak - 1) * ((t - half) / half) : 1;
+                needsFullRedraw = true;
+                if (t < durationMs) requestAnimationFrame(tick);
+                else { globalAlphaBoost = 1; needsFullRedraw = true; }
+            }
+            requestAnimationFrame(tick);
+        }
+
+        function loop() {
+            dotX += (mx - dotX) * 0.6; dotY += (my - dotY) * 0.6;
+            outX += (mx - outX) * 0.18; outY += (my - outY) * 0.18;
+            if (cursorActive) {
+                cursorDot.style.transform = `translate3d(${dotX}px,${dotY}px,0)`;
+                cursorOutline.style.transform = `translate3d(${outX}px,${outY}px,0)`;
+            }
+
+            bgFrame++;
+            if (bgFrame >= BG_EVERY) {
+                bgFrame = 0;
+                
+                updateCells();
+                
+                const clearR = RADIUS + 20;
+                if (prevMx > -9000) dctx.clearRect(prevMx - clearR, prevMy - clearR, clearR * 2, clearR * 2);
+                dctx.clearRect(mx - clearR, my - clearR, clearR * 2, clearR * 2);
+                const grad = dctx.createRadialGradient(mx, my, 0, mx, my, RADIUS);
+                grad.addColorStop(0, 'rgba(255,255,255,0.07)');
+                grad.addColorStop(0.3, 'rgba(255,255,255,0.04)');
+                grad.addColorStop(0.7, 'rgba(255,255,255,0.015)');
+                grad.addColorStop(1, 'rgba(255,255,255,0)');
+                dctx.fillStyle = grad;
+                dctx.fillRect(mx - RADIUS, my - RADIUS, RADIUS * 2, RADIUS * 2);
+                prevMx = mx; prevMy = my;
+            }
+
+            if (shimmerActive) {
+                const now = performance.now();
+                if (!shimmerT0) shimmerT0 = now;
+                const cycleTime = 6500, waveDuration = 2500, t = ((now - shimmerT0) % cycleTime) / waveDuration;
+                renderArt(targetAscii, t <= 1.0 ? -0.2 + t * 1.4 : -999);
+            }
+
+            rafId = requestAnimationFrame(loop);
+        }
+
+        let resizeTimer; addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 120); });
+        resize(); if (!prefersReduced) rafId = requestAnimationFrame(loop);
+        
+        document.addEventListener('visibilitychange', () => { if (document.hidden) { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } } else if (!rafId && !prefersReduced) rafId = requestAnimationFrame(loop); });
+
+        // ============================================================
+        // ASCII ENGINE & ART SCALE LOGIC
+        // ============================================================
+        const asciiContainer = document.getElementById('ascii-art');
+        const targetAscii = `  ██████╗ ██████╗ ██╗     ██╗  ██╗ ██╗ ██████╗ \n ██╔════╝ ██╔══██╗██║     ╚██╗██╔╝███║██╔═══██╗\n ██║      ██████╔╝██║      ╚███╔╝ ╚██║██║   ██║\n ██║      ██╔══██╗██║      ██╔██╗  ██║██║▄▄ ██║\n ╚██████╗ ██║  ██║███████╗██╔╝ ██╗ ██║╚██████╔╝\n  ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝ ╚═╝ ╚══▀▀═╝`;
+        const decryptChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*<>'; 
+        const artLines = targetAscii.split('\n'); 
+        const artCanvas = document.createElement('canvas'); 
+        const actx = artCanvas.getContext('2d'); 
+        const ART_FONT = '##SIZE##px Consolas, Monaco, "Courier New", monospace';
+        let artW = 0, artH = 0, artLineH = 0, artFs = 0, charW = 0, maxChars = 0;
+        
+        function getArtFontSize() { 
+            const w = innerWidth;
+            // The ASCII art is ~48 characters wide. Safely calculate max font size to avoid overflow on any device.
+            // On some mobile OS, monospace characters can render slightly wider.
+            const dynamicFs = Math.max(5, (w - 40) / 29); // 40px safe margin
+            
+            if (w <= 360) return Math.min(dynamicFs, 8.5); 
+            if (w <= 420) return Math.min(dynamicFs, 10.5); 
+            if (w <= 480) return Math.min(dynamicFs, 12);
+            if (w <= 640) return Math.min(dynamicFs, 14); 
+            if (w <= 900) return Math.min(dynamicFs, 18); 
+            if (w <= 1200) return Math.min(dynamicFs, 21); 
+            return 26; 
+        }
+        
+        function initArtCanvas() { 
+            artFs = getArtFontSize(); 
+            actx.font = ART_FONT.replace('##SIZE##', artFs); 
+            charW = actx.measureText('█').width; 
+            maxChars = 0; 
+            for (const line of artLines) { if (line.length > maxChars) maxChars = line.length; } 
+            artLineH = artFs * 1.15; 
+            artW = Math.ceil(maxChars * charW) + 4; 
+            artH = Math.ceil(artLineH * artLines.length) + 4; 
+            const dpr = Math.min(devicePixelRatio || 1, 2); 
+            artCanvas.width = Math.ceil(artW * dpr); 
+            artCanvas.height = Math.ceil(artH * dpr); 
+            artCanvas.style.width = artW + 'px'; 
+            artCanvas.style.height = artH + 'px'; 
+            actx.setTransform(dpr, 0, 0, dpr, 0, 0); 
+        }
+
+        function renderArt(text, waveNormalizedX = -999, isDecoding = false) { 
+            actx.clearRect(0, 0, artW, artH); 
+            actx.font = ART_FONT.replace('##SIZE##', artFs); 
+            actx.textBaseline = 'top'; 
+            const tLines = text.split('\n'); 
+            for (let i = 0; i < tLines.length; i++) { 
+                const line = tLines[i]; 
+                for (let j = 0; j < line.length; j++) { 
+                    const ch = line[j]; 
+                    if (ch === ' ') continue; 
+                    let fillStyle = '#fff'; 
+                    if (waveNormalizedX !== -999 && !isDecoding) { 
+                        const waveCenterIdx = waveNormalizedX * maxChars; 
+                        const tilt = (i / tLines.length) * (maxChars * 0.15); 
+                        const dist = Math.abs(j - (waveCenterIdx - tilt)); 
+                        const spread = maxChars * 0.12; 
+                        if (dist < spread) { 
+                            if (dist < spread * 0.3) fillStyle = '#333'; 
+                            else if (dist < spread * 0.6) fillStyle = '#666'; 
+                            else if (dist < spread * 0.9) fillStyle = '#aaa'; 
+                        } 
+                    } 
+                    actx.fillStyle = fillStyle; 
+                    actx.fillText(ch, 2 + j * charW, 2 + i * artLineH); 
+                } 
+            } 
+        }
+        
+        if (asciiContainer) {
+            artCanvas.style.display = 'block'; 
+            artCanvas.style.margin = '0 auto'; 
+            asciiContainer.innerHTML = ''; 
+            asciiContainer.appendChild(artCanvas);
+        }
+
+        const fontReady = document.fonts ? document.fonts.ready : Promise.resolve();
+        fontReady.then(() => { 
+            function startAsciiAnim() { 
+                initArtCanvas(); 
+                if (prefersReduced) { 
+                    renderArt(targetAscii, -999, false); 
+                    if (asciiContainer) asciiContainer.style.opacity = 1; 
+                } else { 
+                    let iter = 0; 
+                    const maxIter = 40; 
+                    function animateDecode() { 
+                        if (asciiContainer) asciiContainer.style.opacity = 1; 
+                        let result = '', done = true; 
+                        for (let i = 0; i < artLines.length; i++) { 
+                            const line = artLines[i]; 
+                            const threshold = (iter / maxIter) * line.length; 
+                            let decoded = ''; 
+                            for (let j = 0; j < line.length; j++) { 
+                                const ch = line[j]; 
+                                if (ch === ' ') decoded += ' '; 
+                                else if (j < threshold) decoded += ch; 
+                                else { decoded += decryptChars[(Math.random() * decryptChars.length) | 0]; done = false; } 
+                            } 
+                            result += decoded + '\n'; 
+                        } 
+                        renderArt(result, -999, true); 
+                        if (!done && iter < maxIter) { 
+                            iter++; setTimeout(animateDecode, 40); 
+                        } else { 
+                            renderArt(targetAscii, -999, false); 
+                            if (!prefersReduced) { shimmerActive = true; shimmerT0 = 0; } 
+                        } 
+                    } 
+                    setTimeout(animateDecode, 120); 
+                } 
+            } 
+            if (window.__bootDone) startAsciiAnim(); else window.__onBootDone = startAsciiAnim; 
+            addEventListener('resize', () => { initArtCanvas(); renderArt(targetAscii, -999, false); }); 
+        });
+
+        const io = new IntersectionObserver((entries, obs) => { entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('visible'); obs.unobserve(entry.target); } }); }, { threshold: 0.1 });
+        document.querySelectorAll('.fade-up').forEach(el => io.observe(el));
+        
+        if (!isTouch) {
+            document.querySelectorAll('.project-card').forEach(card => { 
+                let pending = false, lx = 0, ly = 0; 
+                card.addEventListener('pointermove', (e) => { 
+                    const r = card.getBoundingClientRect(); lx = e.clientX - r.left; ly = e.clientY - r.top; 
+                    if (pending) return; pending = true; 
+                    requestAnimationFrame(() => { 
+                        const mxn = lx - r.width / 2, myn = ly - r.height / 2; 
+                        card.style.setProperty('--mx', (mxn * 0.04).toFixed(2) + 'px'); 
+                        card.style.setProperty('--my', (myn * 0.04).toFixed(2) + 'px'); 
+                        card.style.setProperty('--gx', lx + 'px'); 
+                        card.style.setProperty('--gy', ly + 'px'); 
+                        pending = false; 
+                    }); 
+                }); 
+                card.addEventListener('pointerleave', () => { 
+                    card.style.setProperty('--mx', '0px'); 
+                    card.style.setProperty('--my', '0px'); 
+                }); 
+            });
+        }
+
+        const statIO = new IntersectionObserver((entries, obs) => { entries.forEach(entry => { if (!entry.isIntersecting) return; const el = entry.target, target = parseFloat(el.dataset.count) || 0, suffix = el.dataset.suffix || '', duration = 1400, start = performance.now(); function step(now) { const t = Math.min(1, (now - start) / duration), eased = 1 - Math.pow(1 - t, 3), val = target >= 100 ? Math.round(target * eased) : (target * eased).toFixed(0); el.textContent = val + suffix; if (t < 1) requestAnimationFrame(step); else el.textContent = target + suffix; } requestAnimationFrame(step); obs.unobserve(el); }); }, { threshold: 0.4 }); document.querySelectorAll('.stat-num').forEach(el => statIO.observe(el));
+
+        // ============================================================
+        // TERMINAL COMMAND PARSER
+        // ============================================================
+        const term = document.getElementById('terminal'), termLog = document.getElementById('term-log'), termInput = document.getElementById('term-input'), termToggle = document.getElementById('term-toggle');
+        function termOpen() { term.classList.add('open'); setTimeout(() => termInput.focus(), 50); } 
+        function termClose() { term.classList.remove('open'); termInput.blur(); } 
+        function termToggleFn() { term.classList.contains('open') ? termClose() : termOpen(); }
+        
+        termToggle?.addEventListener('click', termToggleFn); 
+        document.getElementById('win11-close-btn')?.addEventListener('click', termClose);
+        document.getElementById('win11-tab-close-btn')?.addEventListener('click', termClose);
+        document.querySelector('.win11-ctrl.min')?.addEventListener('click', termClose);
+
+        addEventListener('keydown', (e) => { 
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); termToggleFn(); } 
+            else if (e.key === 'Escape' && term.classList.contains('open')) termClose(); 
+        });
+        
+        function termPrint(html) { termLog.insertAdjacentHTML('beforeend', '\n' + html); termLog.scrollTop = termLog.scrollHeight; }
+        
+        const commands = {
+            help: () => 'Available commands:\n  help       — this help\n  about      — about me\n  ls         — list project files\n  projects   — list projects\n  stack      — tech stack\n  contact    — reach me\n  social     — social links\n  blog       — notes section\n  board      — public board\n  theme      — toggle light/dark\n  debug      — toggle performance monitor\n  matrix     — surprise\n  clear      — clear log\n  exit       — close terminal',
+            about: () => document.documentElement.lang === 'ru' ? 'CRLX1Q — Software Developer.\nМасштабируемая архитектура, нейросети, эстетичные интерфейсы.' : 'CRLX1Q — Software Developer.\nScalable architecture, neural networks, aesthetic interfaces.',
+            ls: () => '  ./\n  ├── server.js\n  ├── index.html\n  ├── package.json\n  ├── README.md\n  └── projects/\n      ├── uma/\n      ├── aistudymate/\n      ├── tasco/\n      ├── antimat/\n      └── foodlensai/',
+            projects: () => 'UMA          → uma.reflexai.pro      (' + (document.documentElement.lang === 'ru' ? 'флагман' : 'flagship') + ')\nAiStudyMate  → aistudymate.reflexai.pro\nTasco        → tasco.reflexai.pro\nAntiMat      → antimat.reflexai.pro\nFoodLensAI   → foodlensai.reflexai.pro',
+            stack: () => 'TypeScript · React · Next.js · Node · Go · Python · PyTorch · PostgreSQL · Redis · Docker · K8s · Rust · WebGL · gRPC · Tailwind',
+            contact: () => 'Email: contact@crlx1q.pro',
+            social: () => '[ GitHub: github.com/crlx1q ] [ Telegram: t.me/Alisheruy ] [ Email: contact@crlx1q.pro ]',
+            blog: () => 'Access /blog section on page.',
+            board: () => 'Access /board to leave notes.',
+            matrix: () => { flashStatic(5.5, 2000); return 'wake up, neo... the matrix has you.'; },
+            debug: () => { if (typeof window.togglePerf === 'function') return window.togglePerf(); return '> error: monitor not found.'; },
+            theme: () => {
+                const root = document.documentElement;
+                const isLight = root.classList.toggle('light-mode');
+                try { localStorage.setItem('crlx1q_theme', isLight ? 'light' : 'dark'); } catch (e) {}
+                const termEl = document.getElementById('terminal');
+                const rect = termEl ? termEl.getBoundingClientRect() : {left:innerWidth/2,top:innerHeight-60,width:0,height:0};
+                const cx = (rect.left + rect.width / 2) | 0;
+                const cy = (rect.top  + rect.height / 2) | 0;
+                const ring = document.createElement('div');
+                const maxD = Math.hypot(innerWidth, innerHeight) * 2.1;
+                ring.style.cssText = `position:fixed;border-radius:50%;border:1px solid rgba(255,255,255,0.35);pointer-events:none;z-index:99999;left:${cx}px;top:${cy}px;width:0;height:0;transform:translate(-50%,-50%);will-change:width,height,opacity;transition:width .6s ease-out,height .6s ease-out,opacity .6s ease-out;opacity:1`;
+                document.body.appendChild(ring);
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    ring.style.width = maxD + 'px';
+                    ring.style.height = maxD + 'px';
+                    ring.style.opacity = '0';
+                    setTimeout(() => ring.remove(), 700);
+                }));
+                return 'theme toggled. preference saved.';
+            },
+            clear: () => { termLog.innerHTML = 'Microsoft Windows [Version 10.0.22631.3296]<br>(c) Microsoft Corporation. All rights reserved.<br><br>'; return null; },
+            exit: () => { termClose(); return null; }
+        };
+        
+        termInput?.addEventListener('keydown', (e) => { 
+            if (e.key !== 'Enter') return; 
+            const cmd = termInput.value.trim().toLowerCase(); 
+            termInput.value = ''; 
+            if (!cmd) return; 
+            termPrint('<span class="prompt">C:\\&gt;</span> ' + cmd); 
+            const fn = commands[cmd]; 
+            if (fn) { const out = fn(); if (out) termPrint(out); } 
+            else termPrint(`'${cmd}' is not recognized as an internal or external command,\noperable program or batch file.`); 
+        });
+
+        const aboutLines = document.querySelectorAll('.about-line'); 
+        if (aboutLines.length) { 
+            const aboutIO = new IntersectionObserver((entries, obs) => { 
+                entries.forEach(entry => { 
+                    if (!entry.isIntersecting) return; 
+                    obs.unobserve(entry.target); 
+                    document.querySelectorAll('#about .about-line').forEach((line, i) => { 
+                        setTimeout(() => { 
+                            line.classList.add('typed'); 
+                            const row = line.classList.contains('skill-row') ? line : null; 
+                            if (row) { 
+                                const pct = parseInt(row.dataset.pct) || 0, fill = row.querySelector('.skill-bar-fill'), label = row.querySelector('.skill-pct'); 
+                                if (fill) fill.style.width = pct + '%'; 
+                                if (label) { 
+                                    let cur = 0; 
+                                    const step = () => { cur = Math.min(pct, cur + 2); label.textContent = cur + '%'; if (cur < pct) requestAnimationFrame(step); else row.classList.add('filled'); }; 
+                                    setTimeout(step, 200); 
+                                } 
+                            } 
+                        }, i * 75); 
+                    }); 
+                }); 
+            }, { threshold: 0.2 }); 
+            const aboutSection = document.getElementById('about'); 
+            if (aboutSection) aboutIO.observe(aboutSection); 
+        }
+
+        const konami = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a']; let kIdx = 0; 
+        addEventListener('keydown', (e) => { 
+            if (e.key.toLowerCase() === konami[kIdx].toLowerCase()) { 
+                kIdx++; 
+                if (kIdx === konami.length) { 
+                    kIdx = 0; flashStatic(7, 1800); termOpen(); termPrint('> konami unlocked. welcome, player one.'); 
+                } 
+            } else kIdx = 0; 
+        });
+        
+        const hint = document.getElementById('term-hint'); 
+        try { 
+            if (hint && !localStorage.getItem('crlx1q_shell_seen')) { 
+                setTimeout(() => hint.classList.add('show'), 2200); 
+                setTimeout(() => hint.classList.remove('show'), 7200); 
+                const dismiss = () => { localStorage.setItem('crlx1q_shell_seen', '1'); hint.classList.remove('show'); }; 
+                termToggle?.addEventListener('click', dismiss, { once: true }); 
+                addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') dismiss(); }, { once: true }); 
+            } 
+        } catch (_) {}
+
+        // ============================================================
+        // 🐛 PERF MONITOR
+        // ============================================================
+        (function initPerfMon() {
+            const mon       = document.getElementById('perf-mon');
+            const fpsBadge  = document.getElementById('perf-fps-badge');
+            const toggleBtn = document.getElementById('perf-toggle-btn');
+            const closeBtn  = document.getElementById('perf-close-btn');
+            const pvFps     = document.getElementById('pv-fps');
+            const pvFt      = document.getElementById('pv-ft');
+            const pvCells   = document.getElementById('pv-cells');
+            const pvCanvas  = document.getElementById('pv-canvas');
+            const pvDpr     = document.getElementById('pv-dpr');
+            const pvRes     = document.getElementById('pv-res');
+            const pvHeap    = document.getElementById('pv-heap');
+            const pvShimmer = document.getElementById('pv-shimmer');
+            const pbFps     = document.getElementById('pb-fps');
+            const pbFt      = document.getElementById('pb-ft');
+            const pbCells   = document.getElementById('pb-cells');
+            const pbCanvas  = document.getElementById('pb-canvas');
+            const spark     = document.getElementById('perf-spark');
+            const sctxP     = spark ? spark.getContext('2d') : null;
+            if (!mon) return;
+
+            window.perfActive = false;
+
+            const HIST = 60;
+            const fpsHistory = new Float32Array(HIST);
+            let histIdx = 0, frameCount = 0, lastSec = performance.now(), lastFrame = performance.now();
+            let collapsed = false;
+
+            window.togglePerf = function() {
+                window.perfActive = !window.perfActive;
+                if (window.perfActive) {
+                    mon.style.display = 'block';
+                    lastSec = performance.now();
+                    lastFrame = performance.now();
+                    frameCount = 0;
+                    requestAnimationFrame(tick);
+                    return '> debug subsystem initialized.';
+                } else {
+                    mon.style.display = 'none';
+                    return '> debug subsystem terminated.';
+                }
+            };
+
+            let dragOn = false, dragOx = 0, dragOy = 0, pmX = null, pmY = null;
+            const bar = document.getElementById('perf-bar');
+            bar.addEventListener('pointerdown', (e) => {
+                if (e.target === toggleBtn || e.target === closeBtn) return;
+                dragOn = true; bar.setPointerCapture(e.pointerId);
+                const r = mon.getBoundingClientRect();
+                dragOx = e.clientX - r.left; dragOy = e.clientY - r.top;
+                mon.style.transition = 'none';
+            });
+            bar.addEventListener('pointermove', (e) => {
+                if (!dragOn) return;
+                pmX = e.clientX - dragOx; pmY = e.clientY - dragOy;
+                mon.style.right = 'auto'; mon.style.bottom = 'auto';
+                mon.style.left = pmX + 'px'; mon.style.top = pmY + 'px';
+            });
+            bar.addEventListener('pointerup', () => { dragOn = false; mon.style.transition = ''; });
+
+            toggleBtn.addEventListener('click', () => {
+                collapsed = !collapsed;
+                mon.classList.toggle('pm-collapsed', collapsed);
+                toggleBtn.textContent = collapsed ? '▸' : '▾';
+            });
+            
+            closeBtn.addEventListener('click', () => { window.togglePerf(); });
+
+            function barColor(ratio) {
+                if (ratio < 0.5) return `hsl(${120 * ratio * 2},80%,55%)`;
+                return `hsl(${120 - 120 * (ratio - 0.5) * 2},80%,55%)`;
+            }
+
+            function drawSparkline(history, idx) {
+                if (!sctxP) return;
+                const w = spark.width, h = spark.height;
+                sctxP.clearRect(0, 0, w, h);
+                const max = 120, step = w / HIST;
+                sctxP.beginPath();
+                for (let i = 0; i < HIST; i++) {
+                    const v = history[(idx + i) % HIST];
+                    const x = i * step;
+                    const y = h - (v / max) * h;
+                    i === 0 ? sctxP.moveTo(x, y) : sctxP.lineTo(x, y);
+                }
+                sctxP.strokeStyle = 'rgba(74,222,128,0.6)';
+                sctxP.lineWidth = 1.2;
+                sctxP.stroke();
+
+                sctxP.beginPath();
+                const ry = h - (60 / max) * h;
+                sctxP.moveTo(0, ry); sctxP.lineTo(w, ry);
+                sctxP.strokeStyle = 'rgba(255,255,255,0.1)';
+                sctxP.lineWidth = 0.8;
+                sctxP.setLineDash([3, 4]); sctxP.stroke(); sctxP.setLineDash([]);
+            }
+
+            function tick(now) {
+                if (!window.perfActive) return;
+
+                frameCount++;
+                const ft = now - lastFrame; lastFrame = now;
+                const elapsed = now - lastSec;
+
+                if (elapsed >= 500) {
+                    const fps = Math.round(frameCount / (elapsed / 1000));
+                    frameCount = 0; lastSec = now;
+
+                    fpsHistory[histIdx] = fps;
+                    histIdx = (histIdx + 1) % HIST;
+
+                    fpsBadge.textContent = fps + ' fps';
+                    fpsBadge.className = fps >= 55 ? '' : fps >= 35 ? 'warn' : 'bad';
+
+                    const fpsRatio = Math.min(1, fps / 120);
+                    pvFps.textContent = fps + ' fps';
+                    pbFps.style.width = (fpsRatio * 100) + '%';
+                    pbFps.style.background = barColor(fpsRatio);
+
+                    const ftRatio = Math.min(1, ft / 50);
+                    pvFt.textContent = ft.toFixed(1) + ' ms';
+                    
+                    pbFt.style.width = (ftRatio * 100) + '%';
+                    pbFt.style.background = barColor(1 - ftRatio);
+
+                    pvCells.textContent = boostedCells.size.toString();
+                    pbCells.style.width = Math.min(100, (boostedCells.size / 1000) * 100) + '%';
+                    pbCells.style.background = 'rgba(255,255,255,0.8)';
+
+                    pvCanvas.textContent = 'Active';
+                    pbCanvas.style.width = '100%';
+
+                    pvDpr.textContent = DPR.toFixed(1);
+                    pvRes.textContent = W + 'x' + H;
+                    
+                    if (performance.memory) {
+                        pvHeap.textContent = (performance.memory.usedJSHeapSize / 1048576).toFixed(1) + ' MB';
+                    } else {
+                        pvHeap.textContent = 'N/A';
+                    }
+                    
+                    pvShimmer.textContent = shimmerActive ? 'ON' : 'OFF';
+
+                    drawSparkline(fpsHistory, histIdx);
+                }
+                
+                if (window.perfActive) requestAnimationFrame(tick);
+            }
+        })();
+    })();
+    </script>
+</body>
+</html>
