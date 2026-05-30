@@ -6,8 +6,6 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build:css": "node scripts/build-tailwind.js",
-    "build": "npm run build:css",
     "check": "node --check server.js"
   },
   "keywords": [],
