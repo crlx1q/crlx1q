@@ -248,11 +248,12 @@ function checkProjectsStatus() {
         console.log(`\x1b[90m  │\x1b[0m  \x1b[90m⋯\x1b[0m \x1b[90m[CHECK]\x1b[0m  ${p.name.padEnd(14)} \x1b[90m→ ${p.url}\x1b[0m`);
 
         let handled = false;
-        function markCheck(success) {
+        function finishCheck(success, logCallback) {
             if (handled) return;
             handled = true;
             recordCheck(p.name, success);
             p.uptime = getProjectUptime(p.name);
+            if (logCallback) logCallback();
             if (--pending <= 0) onAllDone();
         }
 
@@ -261,24 +262,28 @@ function checkProjectsStatus() {
             res.on('end', () => { try { req.destroy(); } catch (_) {} });
             if (res.statusCode >= 200 && res.statusCode < 400) {
                 p.status = 'live';
-                markCheck(true);
-                console.log(`\x1b[90m  │\x1b[0m  \x1b[32m✓\x1b[0m \x1b[32m[LIVE]\x1b[0m   ${p.name.padEnd(14)} \x1b[90m→ ${res.statusCode} — uptime ${p.uptime}%\x1b[0m`);
+                finishCheck(true, () => {
+                    console.log(`\x1b[90m  │\x1b[0m  \x1b[32m✓\x1b[0m \x1b[32m[LIVE]\x1b[0m   ${p.name.padEnd(14)} \x1b[90m→ ${res.statusCode} — uptime ${p.uptime}%\x1b[0m`);
+                });
             } else {
                 p.status = 'offline';
-                markCheck(false);
-                console.log(`\x1b[90m  │\x1b[0m  \x1b[31m✗\x1b[0m \x1b[31m[DOWN]\x1b[0m   ${p.name.padEnd(14)} \x1b[90m→ ${res.statusCode}\x1b[0m`);
+                finishCheck(false, () => {
+                    console.log(`\x1b[90m  │\x1b[0m  \x1b[31m✗\x1b[0m \x1b[31m[DOWN]\x1b[0m   ${p.name.padEnd(14)} \x1b[90m→ ${res.statusCode}\x1b[0m`);
+                });
             }
         }).on('error', (e) => {
             if (e.code === 'ERR_SOCKET_CLOSED' || e.message === 'socket hang up') return;
             p.status = 'offline';
-            markCheck(false);
-            console.log(`\x1b[90m  │\x1b[0m  \x1b[31m✗\x1b[0m \x1b[31m[ERROR]\x1b[0m  ${p.name.padEnd(14)} \x1b[90m→ ${e.code || e.message}\x1b[0m`);
+            finishCheck(false, () => {
+                console.log(`\x1b[90m  │\x1b[0m  \x1b[31m✗\x1b[0m \x1b[31m[ERROR]\x1b[0m  ${p.name.padEnd(14)} \x1b[90m→ ${e.code || e.message}\x1b[0m`);
+            });
         });
         req.on('timeout', () => {
             req.destroy();
             p.status = 'offline';
-            markCheck(false);
-            console.log(`\x1b[90m  │\x1b[0m  \x1b[33m⏱\x1b[0m \x1b[33m[TMOUT]\x1b[0m  ${p.name.padEnd(14)} \x1b[90m→ 5s exceeded\x1b[0m`);
+            finishCheck(false, () => {
+                console.log(`\x1b[90m  │\x1b[0m  \x1b[33m⏱\x1b[0m \x1b[33m[TMOUT]\x1b[0m  ${p.name.padEnd(14)} \x1b[90m→ 5s exceeded\x1b[0m`);
+            });
         });
     });
 }
