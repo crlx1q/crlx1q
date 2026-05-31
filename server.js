@@ -8,6 +8,8 @@ const PORT = 3000;
 const VERSION = '2.6.0';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const NOTES_FILE = path.join(__dirname, 'notes.json');
+const UPTIME_DB_FILE = path.join(__dirname, 'uptime_db.json');
+const UPTIME_CYCLE_DAYS = 30;
 
 // MIME-типы для корректной отдачи файлов
 const MIME_TYPES = {
@@ -48,7 +50,9 @@ function getSecurityHeaders(contentType) {
             "frame-ancestors 'none'",
         ].join('; ');
     } else if (contentType === 'application/json') {
-        headers['Cache-Control'] = 'no-store';
+        headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate';
+        headers['Pragma'] = 'no-cache';
+        headers['Expires'] = '0';
     } else {
         // Static assets — aggressive caching
         headers['Cache-Control'] = 'public, max-age=31536000, immutable';
@@ -101,56 +105,188 @@ const PROJECTS = [
     }
 ];
 
-// Фоновый чек аптайма
+// ============================================================
+// UPTIME DATABASE (JSON, 30-day cycle)
+// ============================================================
+let uptimeDB = { cycleStart: null, projects: {} };
+
+function getToday() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function loadUptimeDB() {
+    try {
+        if (fs.existsSync(UPTIME_DB_FILE)) {
+            uptimeDB = JSON.parse(fs.readFileSync(UPTIME_DB_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.error('  \x1b[31m✗\x1b[0m Error loading uptime DB:', e.message);
+        uptimeDB = { cycleStart: null, projects: {} };
+    }
+
+    const today = getToday();
+
+    if (uptimeDB.cycleStart) {
+        const daysDiff = Math.floor((new Date(today) - new Date(uptimeDB.cycleStart)) / 86400000);
+        if (daysDiff >= UPTIME_CYCLE_DAYS) {
+            console.log(`\x1b[33m  ⟳ Uptime DB: 30-day cycle reset (${daysDiff}d elapsed)\x1b[0m`);
+            uptimeDB = { cycleStart: today, projects: {} };
+        }
+    } else {
+        uptimeDB.cycleStart = today;
+    }
+
+    for (const name in uptimeDB.projects) {
+        rolloverDay(uptimeDB.projects[name], today);
+    }
+
+    saveUptimeDB();
+}
+
+function saveUptimeDB() {
+    const tmpPath = UPTIME_DB_FILE + '.tmp';
+    try {
+        fs.writeFileSync(tmpPath, JSON.stringify(uptimeDB, null, 2));
+        fs.renameSync(tmpPath, UPTIME_DB_FILE);
+    } catch (e) {
+        console.error('  \x1b[31m✗\x1b[0m Error saving uptime DB:', e.message);
+    }
+}
+
+function rolloverDay(projData, today) {
+    if (projData.todayDate && projData.todayDate !== today) {
+        const pct = projData.todayChecks > 0
+            ? parseFloat(((projData.todaySuccess / projData.todayChecks) * 100).toFixed(2))
+            : 100;
+        if (!projData.days) projData.days = [];
+        projData.days.push({ d: projData.todayDate, up: pct });
+        projData.todayDate = today;
+        projData.todayChecks = 0;
+        projData.todaySuccess = 0;
+    }
+}
+
+function recordCheck(projectName, isSuccess) {
+    const today = getToday();
+
+    if (!uptimeDB.projects[projectName]) {
+        uptimeDB.projects[projectName] = {
+            todayDate: today, todayChecks: 0, todaySuccess: 0, days: []
+        };
+    }
+
+    const proj = uptimeDB.projects[projectName];
+    rolloverDay(proj, today);
+    if (!proj.todayDate) proj.todayDate = today;
+
+    proj.todayChecks++;
+    if (isSuccess) proj.todaySuccess++;
+}
+
+function getProjectUptime(projectName) {
+    const proj = uptimeDB.projects[projectName];
+    if (!proj) return '100.00';
+
+    const today = getToday();
+    rolloverDay(proj, today);
+
+    let totalPct = 0, count = 0;
+
+    if (proj.days) {
+        for (const day of proj.days) {
+            totalPct += day.up;
+            count++;
+        }
+    }
+
+    if (proj.todayChecks > 0) {
+        totalPct += (proj.todaySuccess / proj.todayChecks) * 100;
+        count++;
+    }
+
+    if (count === 0) return '100.00';
+    return (totalPct / count).toFixed(2);
+}
+
+// Фоновый чек аптайма (с записью в uptime_db.json)
 function checkProjectsStatus() {
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
     console.log(`\n\x1b[90m  ┌──────────────────────────────────────────────────\x1b[0m`);
     console.log(`\x1b[90m  │\x1b[0m \x1b[36m⟳\x1b[0m  \x1b[1mUptime Service\x1b[0m \x1b[90m— v${VERSION} — ${timestamp}\x1b[0m`);
     console.log(`\x1b[90m  ├──────────────────────────────────────────────────\x1b[0m`);
-    
+
+    const today = getToday();
+    if (uptimeDB.cycleStart) {
+        const daysDiff = Math.floor((new Date(today) - new Date(uptimeDB.cycleStart)) / 86400000);
+        if (daysDiff >= UPTIME_CYCLE_DAYS) {
+            console.log(`\x1b[90m  │\x1b[0m  \x1b[33m⟳\x1b[0m \x1b[33m[RESET]\x1b[0m  30-day cycle complete — resetting`);
+            uptimeDB = { cycleStart: today, projects: {} };
+        }
+    }
+
+    const checkable = PROJECTS.filter(p => p.url && p.status !== 'wip');
+    let pending = checkable.length;
+
+    function onAllDone() {
+        PROJECTS.forEach(p => {
+            if (p.status !== 'wip') p.uptime = getProjectUptime(p.name);
+        });
+        saveUptimeDB();
+        const cycleDay = Math.floor((new Date(today) - new Date(uptimeDB.cycleStart)) / 86400000) + 1;
+        console.log(`\x1b[90m  │\x1b[0m  \x1b[90m📊 Day ${cycleDay}/${UPTIME_CYCLE_DAYS} | cycle started ${uptimeDB.cycleStart}\x1b[0m`);
+        console.log(`\x1b[90m  └──────────────────────────────────────────────────\x1b[0m`);
+    }
+
+    if (pending === 0) { onAllDone(); return; }
+
     PROJECTS.forEach(p => {
         if (!p.url) return;
         if (p.status === 'wip') {
-            console.log(`\x1b[90m  │\x1b[0m  \x1b[33m◐\x1b[0m \x1b[90m[WIP]\x1b[0m    ${p.name.padEnd(14)} \x1b[90m→ skipped (work in progress)\x1b[0m`);
+            console.log(`\x1b[90m  │\x1b[0m  \x1b[33m◐\x1b[0m \x1b[90m[WIP]\x1b[0m    ${p.name.padEnd(14)} \x1b[90m→ skipped\x1b[0m`);
             return;
         }
-        console.log(`\x1b[90m  │\x1b[0m  \x1b[90m⋯\x1b[0m \x1b[90m[PARSE]\x1b[0m  ${p.name.padEnd(14)} \x1b[90m→ ${p.url}\x1b[0m`);
+        console.log(`\x1b[90m  │\x1b[0m  \x1b[90m⋯\x1b[0m \x1b[90m[CHECK]\x1b[0m  ${p.name.padEnd(14)} \x1b[90m→ ${p.url}\x1b[0m`);
+
+        let handled = false;
+        function markCheck(success) {
+            if (handled) return;
+            handled = true;
+            recordCheck(p.name, success);
+            p.uptime = getProjectUptime(p.name);
+            if (--pending <= 0) onAllDone();
+        }
+
         const req = https.get(p.url, { timeout: 5000 }, (res) => {
-            // Consume response data to free socket, then close
             res.resume();
-            res.on('end', () => { try { req.destroy(); } catch(_){} });
-            p.totalChecks++;
+            res.on('end', () => { try { req.destroy(); } catch (_) {} });
             if (res.statusCode >= 200 && res.statusCode < 400) {
                 p.status = 'live';
-                p.successfulChecks++;
-                p.uptime = ((p.successfulChecks / p.totalChecks) * 100).toFixed(2);
+                markCheck(true);
                 console.log(`\x1b[90m  │\x1b[0m  \x1b[32m✓\x1b[0m \x1b[32m[LIVE]\x1b[0m   ${p.name.padEnd(14)} \x1b[90m→ ${res.statusCode} — uptime ${p.uptime}%\x1b[0m`);
             } else {
                 p.status = 'offline';
-                p.uptime = ((p.successfulChecks / p.totalChecks) * 100).toFixed(2);
+                markCheck(false);
                 console.log(`\x1b[90m  │\x1b[0m  \x1b[31m✗\x1b[0m \x1b[31m[DOWN]\x1b[0m   ${p.name.padEnd(14)} \x1b[90m→ ${res.statusCode}\x1b[0m`);
             }
         }).on('error', (e) => {
-            // Ignore errors from intentional destroy after successful response
             if (e.code === 'ERR_SOCKET_CLOSED' || e.message === 'socket hang up') return;
-            p.totalChecks++;
             p.status = 'offline';
-            p.uptime = ((p.successfulChecks / p.totalChecks) * 100).toFixed(2);
+            markCheck(false);
             console.log(`\x1b[90m  │\x1b[0m  \x1b[31m✗\x1b[0m \x1b[31m[ERROR]\x1b[0m  ${p.name.padEnd(14)} \x1b[90m→ ${e.code || e.message}\x1b[0m`);
         });
         req.on('timeout', () => {
             req.destroy();
-            console.log(`\x1b[90m  │\x1b[0m  \x1b[33m⏱\x1b[0m \x1b[33m[TIMEOUT]\x1b[0m ${p.name.padEnd(14)} \x1b[90m→ 5000ms exceeded\x1b[0m`);
+            p.status = 'offline';
+            markCheck(false);
+            console.log(`\x1b[90m  │\x1b[0m  \x1b[33m⏱\x1b[0m \x1b[33m[TMOUT]\x1b[0m  ${p.name.padEnd(14)} \x1b[90m→ 5s exceeded\x1b[0m`);
         });
     });
-    
-    setTimeout(() => {
-        console.log(`\x1b[90m  └──────────────────────────────────────────────────\x1b[0m`);
-    }, 6000);
 }
 
+loadUptimeDB();
 checkProjectsStatus();
 setInterval(checkProjectsStatus, 5 * 60 * 1000); // каждые 5 минут
+
 
 // Инициализация заметок (Board)
 let notes = [];

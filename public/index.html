@@ -1894,7 +1894,7 @@
 
         // Uptime counter (оставлен только для футера)
         let serverStartTime = window.__siteStartTime || Date.now();
-        fetch('/api/init')
+        fetch('/api/init', { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 if (data.uptime) {
@@ -2109,7 +2109,7 @@
         }
 
         if (grid) {
-            fetch('/api/projects')
+            fetch('/api/projects', { cache: 'no-store' })
                 .then(res => res.json())
                 .then(data => {
                     if (Array.isArray(data)) {
