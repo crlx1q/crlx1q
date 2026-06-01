@@ -2166,7 +2166,7 @@
         let globalAlphaBoost = 1;     
         let needsFullRedraw = true;   
         let bgFrame = 0;              
-        let shimmerActive = RenderPipeline.shimmerEnabled, shimmerT0 = 0;
+        let shimmerActive = false, shimmerT0 = 0;
 
         // Sync shimmer state with RenderPipeline
         RenderPipeline.onUpdate(p => { shimmerActive = p.shimmerEnabled; }); 
@@ -2444,7 +2444,7 @@
                             iter++; setTimeout(animateDecode, 40); 
                         } else { 
                             renderArt(targetAscii, -999, false); 
-                            if (!prefersReduced) { shimmerActive = true; shimmerT0 = 0; } 
+                            if (!prefersReduced) { shimmerActive = RenderPipeline.shimmerEnabled; shimmerT0 = 0; } 
                         } 
                     } 
                     setTimeout(animateDecode, 120); 
