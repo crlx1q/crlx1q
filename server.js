@@ -65,7 +65,7 @@ const PROJECTS = [
     {
         name: 'UMA',
         desc: '<span class="lang-en">Next-generation messenger. Secure, blazing fast, and intuitive communication focused on privacy and minimalistic design.</span><span class="lang-ru">Мессенджер нового поколения. Безопасное, невероятно быстрое и интуитивно понятное общение с фокусом на приватность и минималистичный дизайн.</span>',
-        url:  'https://uma.reflexai.pro',
+        url:  'https://uma.crlx1q.com',
         flagship: true, wide: true, nameSize: 'text-4xl tracking-tighter', descSize: 'text-lg',
         tags: ['Node.js', 'WebSockets', 'React', 'E2E Encrypt'],
         rating: 9.8,
@@ -74,7 +74,7 @@ const PROJECTS = [
     {
         name: 'AiStudyMate',
         desc: '<span class="lang-en">Personal AI tutor. An intelligent assistant for knowledge structuring and exam preparation.</span><span class="lang-ru">Персональный ИИ-репетитор. Интеллектуальный помощник для структурирования знаний, подготовки к экзаменам.</span>',
-        url:  'https://aistudymate.reflexai.pro',
+        url:  'https://aistudymate.crlx1q.com',
         tags: ['Python', 'PyTorch', 'Next.js'],
         rating: 8.5,
         totalChecks: 0, successfulChecks: 0, status: 'offline', uptime: '0.00'
@@ -82,7 +82,7 @@ const PROJECTS = [
     {
         name: 'Tasco',
         desc: '<span class="lang-en">Advanced task tracker for developers and teams. Agile project management and analytics.</span><span class="lang-ru">Продвинутый таск-трекер для разработчиков и команд. Гибкое управление проектами и аналитика.</span>',
-        url:  'https://tasco.reflexai.pro',
+        url:  'https://tasco.crlx1q.com',
         tags: ['TypeScript', 'PostgreSQL', 'Redis'],
         rating: 9.0,
         totalChecks: 0, successfulChecks: 0, status: 'wip', uptime: '0.00'
@@ -90,7 +90,7 @@ const PROJECTS = [
     {
         name: 'AntiMat',
         desc: '<span class="lang-en">Intelligent AI moderator. A bot for automatic filtering of profanity in chats.</span><span class="lang-ru">Интеллектуальный AI-модератор. Бот для автоматической фильтрации ненормативной лексики в чатах.</span>',
-        url:  'https://antimat.reflexai.pro',
+        url:  'https://antimat.crlx1q.com',
         tags: ['Python', 'NLP', 'Telegram API'],
         rating: 8.8,
         totalChecks: 0, successfulChecks: 0, status: 'offline', uptime: '0.00'
@@ -98,7 +98,7 @@ const PROJECTS = [
     {
         name: 'FoodLensAI',
         desc: '<span class="lang-en">Neural network for diet analysis. Food and ingredient recognition with instant calorie counting from a single photo.</span><span class="lang-ru">Нейросеть для анализа рациона. Распознавание блюд, ингредиентов и мгновенный подсчёт калорий по одной фотографии.</span>',
-        url:  'https://foodlensai.reflexai.pro',
+        url:  'https://foodlensai.crlx1q.com',
         tags: ['PyTorch', 'Computer Vision', 'FastAPI'],
         rating: 7.5,
         totalChecks: 0, successfulChecks: 0, status: 'offline', uptime: '0.00'
