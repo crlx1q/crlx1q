@@ -42,11 +42,11 @@ function getSecurityHeaders(contentType) {
         headers['Cache-Control'] = 'no-cache';
         headers['Content-Security-Policy'] = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
-            "img-src 'self' data:",
-            "connect-src 'self'",
+            "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
+            "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
             "frame-ancestors 'none'",
         ].join('; ');
     } else if (contentType === 'application/json') {
