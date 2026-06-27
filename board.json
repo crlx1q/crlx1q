@@ -1,10 +1,42 @@
 [
   {
-    "id": "ba72ad45-39d8-47a5-83bb-d6eeadad54a8",
-    "text": "123",
-    "author": "guest_1660",
-    "rot": -0.42460723475334916,
-    "createdAt": "2026-06-27T19:12:52.216Z",
-    "date": 1782587572216
+    "id": "b1a00001-0000-0000-0000-000000000001",
+    "text": "Awesome portfolio! Love the terminal vibe 🔥",
+    "author": "anon_dev",
+    "rot": -1,
+    "createdAt": "2026-06-22T12:00:00.000Z",
+    "date": 1782129600000
+  },
+  {
+    "id": "b1a00002-0000-0000-0000-000000000002",
+    "text": "Waiting for UMA beta release. Need a solid secure messenger.",
+    "author": "crypto_guy",
+    "rot": 1.5,
+    "createdAt": "2026-06-23T14:30:00.000Z",
+    "date": 1782225000000
+  },
+  {
+    "id": "b1a00003-0000-0000-0000-000000000003",
+    "text": "Nice ASCII art implementation. Smooth af.",
+    "author": "neo",
+    "rot": -2,
+    "createdAt": "2026-06-24T09:15:00.000Z",
+    "date": 1782292500000
+  },
+  {
+    "id": "b1a00004-0000-0000-0000-000000000004",
+    "text": "Frontend looks dope, what font is that? 🤔",
+    "author": "designer12",
+    "rot": 1,
+    "createdAt": "2026-06-25T16:45:00.000Z",
+    "date": 1782405900000
+  },
+  {
+    "id": "b1a00005-0000-0000-0000-000000000005",
+    "text": "Привет из КЗ! Успехов с проектами 🇰🇿",
+    "author": "almaty_coder",
+    "rot": -0.5,
+    "createdAt": "2026-06-26T18:20:00.000Z",
+    "date": 1782498000000
   }
 ]
