@@ -1,47 +1,93 @@
 [
   {
-    "id": "87c05f21-8562-491a-9647-a58073f8a1d5",
-    "text": "ddd",
-    "author": "guest_3560",
-    "rot": -0.1436372984048706,
-    "createdAt": "2026-05-30T09:07:17.640Z",
-    "date": 1780132037640
+    "id": "1",
+    "date": "2026.05.28",
+    "readTime": "5 min read",
+    "likes": 43,
+    "tags": [
+      "Architecture",
+      "WebSockets",
+      "Node.js"
+    ],
+    "title": {
+      "en": "UMA Architecture: How we achieved 0ms latency",
+      "ru": "Архитектура UMA: как мы добились 0ms latency"
+    },
+    "desc": {
+      "en": "A breakdown of technical solutions, custom WebSockets, and database optimization to ensure instant message delivery.",
+      "ru": "Разбор технических решений, кастомных вебсокетов и оптимизации базы данных для обеспечения мгновенной доставки сообщений."
+    },
+    "content": {
+      "en": "<p class='text-gray-300 leading-relaxed mb-4'>In this article, I will explain how we built the UMA messenger backend to handle millions of connections with virtually zero latency. We used a custom WebSocket implementation in Node.js, backed by Redis for fast pub/sub messaging across horizontal instances...</p><p class='text-gray-300 leading-relaxed'>The key was optimizing the serialization format to a minimal binary protocol instead of heavy JSON payloads.</p>",
+      "ru": "<p class='text-gray-300 leading-relaxed mb-4'>В этой статье я расскажу, как мы создали бэкенд мессенджера UMA для обработки миллионов соединений с практически нулевой задержкой. Мы использовали кастомную реализацию WebSocket на Node.js, подкрепленную Redis для быстрого pub/sub обмена сообщениями между горизонтальными инстансами...</p><p class='text-gray-300 leading-relaxed'>Ключом к успеху стала оптимизация формата сериализации до минимального бинарного протокола вместо тяжелых JSON.</p>"
+    }
   },
   {
-    "text": "аззз",
-    "author": "guest_1327",
-    "rot": -0.05780940673718593,
-    "date": 1780067809728
+    "id": "2",
+    "date": "2026.04.15",
+    "readTime": "3 min read",
+    "likes": 15,
+    "tags": [
+      "PyTorch",
+      "ONNX",
+      "Web"
+    ],
+    "title": {
+      "en": "Neural Networks on Client: PyTorch -> ONNX",
+      "ru": "Нейросети на клиенте: PyTorch -> ONNX"
+    },
+    "desc": {
+      "en": "How to run a heavy computer vision model directly in the user's browser without losing accuracy.",
+      "ru": "Как запустить тяжелую модель компьютерного зрения прямо в браузере пользователя без потери точности."
+    },
+    "content": {
+      "en": "<p class='text-gray-300 leading-relaxed'>Exporting PyTorch models to ONNX and running them in the browser via ONNX Runtime Web opens up amazing possibilities for privacy-first AI applications...</p>",
+      "ru": "<p class='text-gray-300 leading-relaxed'>Экспорт моделей PyTorch в ONNX и их запуск в браузере через ONNX Runtime Web открывает потрясающие возможности для ИИ-приложений с фокусом на приватность...</p>"
+    }
   },
   {
-    "text": "йоу",
-    "author": "guest_1938",
-    "rot": -1.483441331860174,
-    "date": 1780067598007
+    "id": "3",
+    "date": "2026.03.10",
+    "readTime": "4 min read",
+    "likes": 9,
+    "tags": [
+      "UI/UX",
+      "CSS",
+      "Design"
+    ],
+    "title": {
+      "en": "The Art of Terminal Aesthetics in Web Design",
+      "ru": "Искусство терминальной эстетики в веб-дизайне"
+    },
+    "desc": {
+      "en": "Why brutalist terminal interfaces are making a comeback and how to design them elegantly.",
+      "ru": "Почему бруталистичные терминальные интерфейсы возвращаются и как их элегантно спроектировать."
+    },
+    "content": {
+      "en": "<p class='text-gray-300 leading-relaxed'>Terminal interfaces evoke a sense of raw power and nostalgia. In modern web design, combining this raw aesthetic with smooth animations and crisp typography creates a unique, memorable experience...</p>",
+      "ru": "<p class='text-gray-300 leading-relaxed'>Терминальные интерфейсы вызывают чувство чистой мощи и ностальгии. В современном веб-дизайне сочетание этой сырой эстетики с плавными анимациями и четкой типографикой создает уникальный, запоминающийся опыт...</p>"
+    }
   },
   {
-    "text": "Awesome portfolio! Love the terminal vibe 🔥",
-    "author": "anon_dev",
-    "rot": -1
-  },
-  {
-    "text": "Waiting for UMA beta release. Need a solid secure messenger.",
-    "author": "crypto_guy",
-    "rot": 1.5
-  },
-  {
-    "text": "Nice ASCII art implementation. Smooth af.",
-    "author": "neo",
-    "rot": -2
-  },
-  {
-    "text": "Frontend looks dope, what font is that? 🤔",
-    "author": "designer12",
-    "rot": 1
-  },
-  {
-    "text": "Привет из КЗ! Успехов с проектами 🇰🇿",
-    "author": "almaty_coder",
-    "rot": -0.5
+    "id": "4",
+    "date": "2026.02.05",
+    "readTime": "7 min read",
+    "likes": 103,
+    "tags": [
+      "Career",
+      "Motivation"
+    ],
+    "title": {
+      "en": "From Zero to Fullstack: My Journey",
+      "ru": "От нуля до Fullstack: Мой путь"
+    },
+    "desc": {
+      "en": "A personal retrospective on learning to code, building projects, and landing the first tech job.",
+      "ru": "Личная ретроспектива об изучении программирования, создании проектов и получении первой работы в IT."
+    },
+    "content": {
+      "en": "<p class='text-gray-300 leading-relaxed'>It started with a simple HTML file and grew into a passion for scalable systems and AI. The journey wasn't easy, but every bug fixed was a step forward...</p>",
+      "ru": "<p class='text-gray-300 leading-relaxed'>Всё началось с простого HTML-файла и переросло в страсть к масштабируемым системам и ИИ. Путь был непростым, но каждый исправленный баг был шагом вперед...</p>"
+    }
   }
 ]

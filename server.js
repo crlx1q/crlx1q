@@ -7,9 +7,22 @@ const crypto = require('crypto');
 const PORT = 3000;
 const VERSION = '2.6.0';
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const BOARD_FILE = path.join(__dirname, 'board.json');
 const NOTES_FILE = path.join(__dirname, 'notes.json');
 const UPTIME_DB_FILE = path.join(__dirname, 'uptime_db.json');
 const UPTIME_CYCLE_DAYS = 30;
+
+const PROJECTS_FILE = path.join(__dirname, 'projects.json');
+const UPLOADS_DIR = path.join(PUBLIC_DIR, 'uploads');
+if(!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, {recursive: true});
+
+const CRLPASS = process.env.CRLPASS || '651956';
+let adminToken = require('crypto').randomBytes(32).toString('hex');
+let projects = [];
+if (fs.existsSync(PROJECTS_FILE)) {
+    try { projects = JSON.parse(fs.readFileSync(PROJECTS_FILE, 'utf8')); } catch(e){}
+}
+
 
 // MIME-типы для корректной отдачи файлов
 const MIME_TYPES = {
@@ -61,49 +74,9 @@ function getSecurityHeaders(contentType) {
 }
 
 // Заглушка проектов
-const PROJECTS = [
-    {
-        name: 'UMA',
-        desc: '<span class="lang-en">Next-generation messenger. Secure, blazing fast, and intuitive communication focused on privacy and minimalistic design.</span><span class="lang-ru">Мессенджер нового поколения. Безопасное, невероятно быстрое и интуитивно понятное общение с фокусом на приватность и минималистичный дизайн.</span>',
-        url:  'https://uma.crlx1q.com',
-        flagship: true, wide: true, nameSize: 'text-4xl tracking-tighter', descSize: 'text-lg',
-        tags: ['Node.js', 'WebSockets', 'React', 'E2E Encrypt'],
-        rating: 9.8,
-        totalChecks: 0, successfulChecks: 0, status: 'offline', uptime: '0.00'
-    },
-    {
-        name: 'AiStudyMate',
-        desc: '<span class="lang-en">Personal AI tutor. An intelligent assistant for knowledge structuring and exam preparation.</span><span class="lang-ru">Персональный ИИ-репетитор. Интеллектуальный помощник для структурирования знаний, подготовки к экзаменам.</span>',
-        url:  'https://aistudymate.crlx1q.com',
-        tags: ['Python', 'PyTorch', 'Next.js'],
-        rating: 8.5,
-        totalChecks: 0, successfulChecks: 0, status: 'offline', uptime: '0.00'
-    },
-    {
-        name: 'Tasco',
-        desc: '<span class="lang-en">Advanced task tracker for developers and teams. Agile project management and analytics.</span><span class="lang-ru">Продвинутый таск-трекер для разработчиков и команд. Гибкое управление проектами и аналитика.</span>',
-        url:  'https://tasco.crlx1q.com',
-        tags: ['TypeScript', 'PostgreSQL', 'Redis'],
-        rating: 9.0,
-        totalChecks: 0, successfulChecks: 0, status: 'wip', uptime: '0.00'
-    },
-    {
-        name: 'AntiMat',
-        desc: '<span class="lang-en">Intelligent AI moderator. A bot for automatic filtering of profanity in chats.</span><span class="lang-ru">Интеллектуальный AI-модератор. Бот для автоматической фильтрации ненормативной лексики в чатах.</span>',
-        url:  'https://antimat.crlx1q.com',
-        tags: ['Python', 'NLP', 'Telegram API'],
-        rating: 8.8,
-        totalChecks: 0, successfulChecks: 0, status: 'offline', uptime: '0.00'
-    },
-    {
-        name: 'FoodLensAI',
-        desc: '<span class="lang-en">Neural network for diet analysis. Food and ingredient recognition with instant calorie counting from a single photo.</span><span class="lang-ru">Нейросеть для анализа рациона. Распознавание блюд, ингредиентов и мгновенный подсчёт калорий по одной фотографии.</span>',
-        url:  'https://foodlensai.crlx1q.com',
-        tags: ['PyTorch', 'Computer Vision', 'FastAPI'],
-        rating: 7.5,
-        totalChecks: 0, successfulChecks: 0, status: 'offline', uptime: '0.00'
-    }
-];
+
+// PROJECTS dynamically loaded
+
 
 // ============================================================
 // UPTIME DATABASE (JSON, 30-day cycle)
@@ -224,11 +197,11 @@ function checkProjectsStatus() {
         }
     }
 
-    const checkable = PROJECTS.filter(p => p.url && p.status !== 'wip');
+    const checkable = projects.filter(p => p.url && p.status !== 'wip');
     let pending = checkable.length;
 
     function onAllDone() {
-        PROJECTS.forEach(p => {
+        projects.forEach(p => {
             if (p.status !== 'wip') p.uptime = getProjectUptime(p.name);
         });
         saveUptimeDB();
@@ -239,7 +212,7 @@ function checkProjectsStatus() {
 
     if (pending === 0) { onAllDone(); return; }
 
-    PROJECTS.forEach(p => {
+    projects.forEach(p => {
         if (!p.url) return;
         if (p.status === 'wip') {
             console.log(`\x1b[90m  │\x1b[0m  \x1b[33m◐\x1b[0m \x1b[90m[WIP]\x1b[0m    ${p.name.padEnd(14)} \x1b[90m→ skipped\x1b[0m`);
@@ -293,23 +266,35 @@ checkProjectsStatus();
 setInterval(checkProjectsStatus, 5 * 60 * 1000); // каждые 5 минут
 
 
-// Инициализация заметок (Board)
-let notes = [];
-if (fs.existsSync(NOTES_FILE)) {
+// Инициализация гостевой книги (Board)
+let boardNotes = [];
+if (fs.existsSync(BOARD_FILE)) {
     try {
-        notes = JSON.parse(fs.readFileSync(NOTES_FILE, 'utf8'));
+        boardNotes = JSON.parse(fs.readFileSync(BOARD_FILE, 'utf8'));
     } catch(e) {
-        console.error("Ошибка чтения notes.json");
+        console.error("Ошибка чтения board.json");
     }
 } else {
-    notes = [
+    boardNotes = [
         { text: "Awesome portfolio! Love the terminal vibe 🔥", author: "anon_dev", rot: -1 },
         { text: "Waiting for UMA beta release. Need a solid secure messenger.", author: "crypto_guy", rot: 1.5 },
         { text: "Nice ASCII art implementation. Smooth af.", author: "neo", rot: -2 },
         { text: "Frontend looks dope, what font is that? 🤔", author: "designer12", rot: 1 },
         { text: "Привет из КЗ! Успехов с проектами 🇰🇿", author: "almaty_coder", rot: -0.5 }
     ];
-    fs.writeFileSync(NOTES_FILE, JSON.stringify(notes, null, 2));
+    fs.writeFileSync(BOARD_FILE, JSON.stringify(boardNotes, null, 2));
+}
+
+// Инициализация статей (Notes/Blog)
+let articles = [];
+if (fs.existsSync(NOTES_FILE)) {
+    try {
+        articles = JSON.parse(fs.readFileSync(NOTES_FILE, 'utf8'));
+    } catch(e) {
+        console.error("Ошибка чтения notes.json");
+    }
+} else {
+    fs.writeFileSync(NOTES_FILE, JSON.stringify([], null, 2));
 }
 
 // Простая защита от спама (ограничение запросов)
@@ -331,7 +316,22 @@ setInterval(() => {
     }
 }, 10 * 60 * 1000);
 
-const server = http.createServer((req, res) => {
+
+function parseBody(req) {
+    return new Promise((resolve) => {
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', () => {
+            try { resolve(body ? JSON.parse(body) : {}); }
+            catch(e) { resolve({}); }
+        });
+    });
+}
+function isAdmin(req) {
+    return req.headers['authorization'] === 'Bearer ' + adminToken;
+}
+
+const server = http.createServer(async (req, res) => {
     // Health check endpoint
     if (req.url === '/health' && req.method === 'GET') {
         res.writeHead(200, getSecurityHeaders('application/json'));
@@ -340,11 +340,141 @@ const server = http.createServer((req, res) => {
             version: VERSION,
             uptime: Math.floor(process.uptime()),
             timestamp: new Date().toISOString(),
-            projects: PROJECTS.filter(p => p.status === 'live').length + '/' + PROJECTS.length + ' live'
+            projects: projects.filter(p => p.status === 'live').length + '/' + projects.length + ' live'
         }));
     }
 
     // API endpoints
+    
+    // Admin Auth
+    if (req.url === '/api/admin/auth' && req.method === 'POST') {
+        const body = await parseBody(req);
+        if (body.password === CRLPASS) {
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ token: adminToken }));
+        }
+        res.writeHead(401, getSecurityHeaders('application/json'));
+        return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
+
+    // Admin API guard
+    if (req.url.startsWith('/api/admin/') && req.url !== '/api/admin/auth') {
+        if (!isAdmin(req)) {
+            res.writeHead(401, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ error: 'Unauthorized' }));
+        }
+
+        // Upload
+        if (req.url === '/api/admin/upload' && req.method === 'POST') {
+            const body = await parseBody(req);
+            if (body.image) {
+                const matches = body.image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                if (matches && matches.length === 3) {
+                    const buffer = Buffer.from(matches[2], 'base64');
+                    const ext = matches[1].split('/')[1] || 'png';
+                    const filename = 'upload_' + Date.now() + '.' + ext;
+                    fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+                    res.writeHead(200, getSecurityHeaders('application/json'));
+                    return res.end(JSON.stringify({ url: '/uploads/' + filename }));
+                }
+            }
+            res.writeHead(400); return res.end();
+        }
+
+        // Stats
+        if (req.url === '/api/admin/stats' && req.method === 'GET') {
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({
+                uptime: process.uptime(),
+                memory: process.memoryUsage(),
+                projectsCount: projects.length,
+                articlesCount: articles.length,
+                boardCount: boardNotes.length
+            }));
+        }
+
+        // Projects CRUD
+        if (req.url === '/api/admin/projects' && req.method === 'POST') {
+            const body = await parseBody(req);
+            body.id = Date.now().toString();
+            projects.push(body);
+            fs.writeFileSync(PROJECTS_FILE, JSON.stringify(projects, null, 2));
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify(body));
+        }
+        if (req.url.startsWith('/api/admin/projects/') && req.method === 'PUT') {
+            const id = req.url.split('/').pop();
+            const body = await parseBody(req);
+            const idx = projects.findIndex(p => p.id === id || p.name === id); // fallback to name for old ones
+            if(idx !== -1) {
+                projects[idx] = { ...projects[idx], ...body };
+                fs.writeFileSync(PROJECTS_FILE, JSON.stringify(projects, null, 2));
+                res.writeHead(200, getSecurityHeaders('application/json'));
+                return res.end(JSON.stringify(projects[idx]));
+            }
+        }
+        if (req.url.startsWith('/api/admin/projects/') && req.method === 'DELETE') {
+            const id = req.url.split('/').pop();
+            projects = projects.filter(p => p.id !== id && p.name !== id);
+            fs.writeFileSync(PROJECTS_FILE, JSON.stringify(projects, null, 2));
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ success: true }));
+        }
+
+        // Articles CRUD
+        if (req.url === '/api/admin/articles' && req.method === 'POST') {
+            const body = await parseBody(req);
+            body.id = Date.now().toString();
+            articles.unshift(body);
+            fs.writeFileSync(NOTES_FILE, JSON.stringify(articles, null, 2));
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify(body));
+        }
+        if (req.url.startsWith('/api/admin/articles/') && req.method === 'PUT') {
+            const id = req.url.split('/').pop();
+            const body = await parseBody(req);
+            const idx = articles.findIndex(a => a.id === id);
+            if(idx !== -1) {
+                articles[idx] = { ...articles[idx], ...body };
+                fs.writeFileSync(NOTES_FILE, JSON.stringify(articles, null, 2));
+                res.writeHead(200, getSecurityHeaders('application/json'));
+                return res.end(JSON.stringify(articles[idx]));
+            }
+        }
+        if (req.url.startsWith('/api/admin/articles/') && req.method === 'DELETE') {
+            const id = req.url.split('/').pop();
+            articles = articles.filter(a => a.id !== id);
+            fs.writeFileSync(NOTES_FILE, JSON.stringify(articles, null, 2));
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ success: true }));
+        }
+
+        // Board Delete
+        if (req.url.startsWith('/api/admin/board/') && req.method === 'DELETE') {
+            const id = req.url.split('/').pop();
+            boardNotes = boardNotes.filter(b => b.id !== id);
+            fs.writeFileSync(BOARD_FILE, JSON.stringify(boardNotes, null, 2));
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ success: true }));
+        }
+        
+        // Catchall admin 404
+        res.writeHead(404);
+        return res.end();
+    }
+
+    // Serve Admin Panel
+    if (req.url === '/admin' || req.url === '/admin/') {
+        if (fs.existsSync(path.join(PUBLIC_DIR, 'admin.html'))) {
+            const html = fs.readFileSync(path.join(PUBLIC_DIR, 'admin.html'));
+            res.writeHead(200, getSecurityHeaders('text/html'));
+            return res.end(html);
+        } else {
+            res.writeHead(404);
+            return res.end('Admin panel not found. Please wait for deployment.');
+        }
+    }
+
     if (req.url === '/api/init') {
         const acceptLang = req.headers['accept-language'] || '';
         const isRu = acceptLang.includes('ru') || acceptLang.includes('uk') || acceptLang.includes('be') || acceptLang.includes('kk');
@@ -360,26 +490,25 @@ const server = http.createServer((req, res) => {
 
     if (req.url === '/api/projects' && req.method === 'GET') {
         res.writeHead(200, getSecurityHeaders('application/json'));
-        return res.end(JSON.stringify(PROJECTS));
+        return res.end(JSON.stringify(projects));
     }
 
-    if (req.url === '/api/notes' && req.method === 'GET') {
+    if (req.url === '/api/board' && req.method === 'GET') {
         res.writeHead(200, getSecurityHeaders('application/json'));
-        return res.end(JSON.stringify(notes));
+        return res.end(JSON.stringify(boardNotes));
     }
 
-    if (req.url === '/api/notes' && req.method === 'POST') {
+    if (req.url === '/api/board' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => {
             body += chunk.toString();
-            if (body.length > 5000) req.connection.destroy(); // Защита от больших payload
+            if (body.length > 5000) req.connection.destroy();
         });
         req.on('end', () => {
             const ip = getClientIP(req);
             const now = Date.now();
             const lastTime = ipRateLimit.get(ip) || 0;
             
-            // Лимит: 1 заметка раз в 30 минут
             if (now - lastTime < 30 * 60 * 1000) {
                 res.writeHead(429, getSecurityHeaders('application/json'));
                 return res.end(JSON.stringify({ error: 'RATE LIMIT. 1 NOTE PER 30 MINS.' }));
@@ -392,7 +521,7 @@ const server = http.createServer((req, res) => {
                     return res.end(JSON.stringify({ error: 'Некорректный текст' }));
                 }
                 
-                const text = data.text.trim().substring(0, 120); // Ограничение в 120 символов
+                const text = data.text.trim().substring(0, 120);
                 if (!text || text.length < 2) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
                     return res.end(JSON.stringify({ error: 'Текст слишком короткий' }));
@@ -407,16 +536,15 @@ const server = http.createServer((req, res) => {
                     date: Date.now()
                 };
                 
-                notes.unshift(newNote); // Добавляем в начало
-                if (notes.length > 50) notes.pop(); // Храним только последние 50 заметок
+                boardNotes.unshift(newNote);
+                if (boardNotes.length > 50) boardNotes.pop();
                 
-                // Atomic write: tmp -> rename
-                const tmpPath = NOTES_FILE + '.tmp';
+                const tmpPath = BOARD_FILE + '.tmp';
                 try {
-                    fs.writeFileSync(tmpPath, JSON.stringify(notes, null, 2));
-                    fs.renameSync(tmpPath, NOTES_FILE);
+                    fs.writeFileSync(tmpPath, JSON.stringify(boardNotes, null, 2));
+                    fs.renameSync(tmpPath, BOARD_FILE);
                 } catch (writeErr) {
-                    console.error('Error writing notes:', writeErr);
+                    console.error('Error writing board notes:', writeErr);
                 }
                 ipRateLimit.set(ip, now);
                 
@@ -430,15 +558,69 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    if (req.url === '/api/articles' && req.method === 'GET') {
+        res.writeHead(200, getSecurityHeaders('application/json'));
+        // Возвращаем список статей без полных текстов для превью
+        const previews = articles.map(a => ({ ...a, content: undefined }));
+        return res.end(JSON.stringify(previews));
+    }
+
+    if (req.url.startsWith('/api/articles/') && req.method === 'GET') {
+        const id = req.url.split('/')[3];
+        const article = articles.find(a => a.id === id);
+        if (article) {
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify(article));
+        } else {
+            res.writeHead(404, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ error: 'Not found' }));
+        }
+    }
+
+    if (req.url.startsWith('/api/articles/') && req.url.endsWith('/like') && req.method === 'POST') {
+        const id = req.url.split('/')[3];
+        const article = articles.find(a => a.id === id);
+        if (article) {
+            const ip = getClientIP(req);
+            const likeKey = `like_${ip}_${id}`;
+            const now = Date.now();
+            const lastLike = ipRateLimit.get(likeKey) || 0;
+
+            if (now - lastLike < 24 * 60 * 60 * 1000) { // 1 лайк в сутки с одного IP
+                res.writeHead(429, getSecurityHeaders('application/json'));
+                return res.end(JSON.stringify({ error: 'Уже лайкнули' }));
+            }
+
+            article.likes = (article.likes || 0) + 1;
+            ipRateLimit.set(likeKey, now);
+
+            try {
+                fs.writeFileSync(NOTES_FILE, JSON.stringify(articles, null, 2));
+            } catch(e) {
+                console.error("Ошибка сохранения лайка:", e);
+            }
+
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ likes: article.likes }));
+        } else {
+            res.writeHead(404, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ error: 'Not found' }));
+        }
+    }
+
     // Логирование запросов в консоль
     console.log(`\x1b[90m[REQ]\x1b[0m ${req.method} ${req.url}`);
     
-    // SPA-роуты — отдаем index.html для клиентских страниц
-    const spaRoutes = ['/notes', '/board'];
+    // Роутинг для клиентских страниц
+    const pageMap = {
+        '/notes': 'notes.html',
+        '/board': 'board.html',
+        '/article': 'article.html'
+    };
     const urlPath = req.url.split('?')[0];
     
-    if (spaRoutes.includes(urlPath)) {
-        const indexPath = path.join(PUBLIC_DIR, 'index.html');
+    if (pageMap[urlPath]) {
+        const indexPath = path.join(PUBLIC_DIR, pageMap[urlPath]);
         fs.readFile(indexPath, (err, data) => {
             if (err) {
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -502,8 +684,7 @@ server.listen(PORT, () => {
     console.log(`  \x1b[36m❖\x1b[0m \x1b[1mStatus\x1b[0m    : \x1b[32mActive & Listening\x1b[0m`);
     console.log(`  \x1b[36m❖\x1b[0m \x1b[1mLocal\x1b[0m     : \x1b[4mhttp://localhost:${PORT}\x1b[0m`);
     console.log(`  \x1b[36m❖\x1b[0m \x1b[1mDirectory\x1b[0m : /public`);
-    console.log(`  \x1b[36m❖\x1b[0m \x1b[1mUptime\x1b[0m    : \x1b[90mMonitoring ${PROJECTS.filter(p => p.url && p.status !== 'wip').length} sites (interval: 5min)\x1b[0m`);
+    console.log(`  \x1b[36m❖\x1b[0m \x1b[1mUptime\x1b[0m    : \x1b[90mMonitoring ${projects.filter(p => p.url && p.status !== 'wip').length} sites (interval: 5min)\x1b[0m`);
     console.log(`\x1b[90m  ---------------------------------------\x1b[0m\n`);
     console.log(`\x1b[90m  Waiting for connections...\x1b[0m\n`);
 });
-

@@ -998,7 +998,7 @@
 
     <!-- Navigation -->
     <nav id="navbar" class="fixed w-full top-0 z-50 px-6 py-4 flex justify-between items-center pointer-events-auto">
-        <a href="/" id="nav-brand" class="font-mono text-sm tracking-widest uppercase flex items-center gap-3" aria-label="CRL.X1Q()" onclick="if(window.__spaNav){event.preventDefault();window.__spaNav('/');}">
+        <a href="/" id="nav-brand" class="font-mono text-sm tracking-widest uppercase flex items-center gap-3" aria-label="CRL.X1Q()" >
             <img src="/logo.png" alt="CRLX1Q" class="nav-logo-img theme-protect">
             <span id="nav-brand-text">CRL.X1Q()</span>
             <span class="nav-now-building"><span class="lang-en">now building: UMA</span><span class="lang-ru">сейчас в работе: UMA</span></span>
@@ -1042,8 +1042,8 @@
         </script>
         <div class="nav-links flex gap-4 md:gap-6 font-mono text-xs uppercase tracking-wider items-center">
             <a href="/#projects" class="hover:text-white text-grayish transition-colors nav-main-link"><span class="lang-en">Projects</span><span class="lang-ru">Проекты</span></a>
-            <a href="/notes" class="hover:text-white text-grayish transition-colors nav-main-link" onclick="if(window.__spaNav){event.preventDefault();window.__spaNav('/notes');}"><span class="lang-en">Notes</span><span class="lang-ru">Заметки</span></a>
-            <a href="/board" class="hover:text-white text-grayish transition-colors nav-main-link" onclick="if(window.__spaNav){event.preventDefault();window.__spaNav('/board');}"><span class="lang-en">Board</span><span class="lang-ru">Доска</span></a>
+            <a href="/notes" class="hover:text-white text-grayish transition-colors nav-main-link" ><span class="lang-en">Notes</span><span class="lang-ru">Заметки</span></a>
+            <a href="/board" class="hover:text-white text-grayish transition-colors nav-main-link" ><span class="lang-en">Board</span><span class="lang-ru">Доска</span></a>
             <a href="/#contact" class="hover:text-white text-grayish transition-colors nav-main-link"><span class="lang-en">Contact</span><span class="lang-ru">Контакты</span></a>
 
             <!-- Language Switcher -->
@@ -1112,9 +1112,9 @@
     <div id="mobile-menu" class="mobile-menu">
         <a href="/#projects" onclick="closeMobileMenu();"><span class="lang-en">Projects</span><span class="lang-ru">Проекты</span></a>
         <div class="mobile-menu-divider"></div>
-        <a href="/notes" onclick="event.preventDefault();closeMobileMenu();if(window.__spaNav)window.__spaNav('/notes');"><span class="lang-en">Notes</span><span class="lang-ru">Заметки</span></a>
+        <a href="/notes" ><span class="lang-en">Notes</span><span class="lang-ru">Заметки</span></a>
         <div class="mobile-menu-divider"></div>
-        <a href="/board" onclick="event.preventDefault();closeMobileMenu();if(window.__spaNav)window.__spaNav('/board');"><span class="lang-en">Board</span><span class="lang-ru">Доска</span></a>
+        <a href="/board" ><span class="lang-en">Board</span><span class="lang-ru">Доска</span></a>
         <div class="mobile-menu-divider"></div>
         <a href="/#contact" onclick="closeMobileMenu();"><span class="lang-en">Contact</span><span class="lang-ru">Контакты</span></a>
         <!-- Language Switcher -->
@@ -1165,195 +1165,27 @@
     </script>
 
     <!-- Content Wrap -->
-    <div id="content-wrap" style="position:relative;z-index:2">
-
-    <!-- Hero Section -->
-    <section class="min-h-screen flex flex-col justify-center items-center px-4 relative">
-        <div class="scanline-wrap" aria-hidden="true"></div>
-        <div class="z-10 text-center w-full max-w-5xl flex flex-col items-center justify-center min-h-[75vh]">
-            <div id="ascii-art" class="ascii-container font-mono mb-8 opacity-0 transition-opacity duration-1000"></div>
-
-            <div class="fade-up w-full flex flex-col items-center">
-                
-                <!-- TERMINAL LIFE WIDGET -->
-                <div class="inline-flex flex-col items-start gap-1 font-mono text-xs md:text-sm text-gray-500 uppercase tracking-widest mb-10 text-left">
-                    <div>&gt; STATUS: <span class="text-white">ONLINE</span><span class="console-cursor">_</span></div>
-                    <div class="flex items-center gap-2">&gt; TIME..: 
-                        <svg id="kzt-clock" width="16" height="16" viewBox="0 0 24 24" class="opacity-80">
-                            <circle cx="12" cy="12" r="10" fill="none" stroke="#555" stroke-width="2"></circle>
-                            <line id="clock-h" x1="12" y1="12" x2="12" y2="7.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" style="transform-origin: 12px 12px; transform: rotate(0deg); transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1);"></line>
-                            <line id="clock-m" x1="12" y1="12" x2="12" y2="5" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" style="transform-origin: 12px 12px; transform: rotate(0deg); transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1);"></line>
-                            <line id="clock-s" x1="12" y1="12" x2="12" y2="3.5" stroke="#ef4444" stroke-width="1" stroke-linecap="round" style="transform-origin: 12px 12px; transform: rotate(0deg); transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1);"></line>
-                            <circle cx="12" cy="12" r="1.5" fill="#fff"></circle>
-                        </svg>
-                        <span id="life-time" class="text-white">00:00</span>
-                    </div>
-                    <div>&gt; ACTIVE: <span id="life-icon"></span> <span id="life-text" class="text-white"></span></div>
-                </div>
-                
-                <h2 class="text-xl md:text-3xl font-light text-light max-w-2xl mx-auto leading-relaxed mt-4">
-                    <span class="lang-en">Creating scalable architecture, neural networks, and aesthetic interfaces.</span><span class="lang-ru">Создаю масштабируемую архитектуру, нейросети и эстетичные интерфейсы.</span>
-                </h2>
-            </div>
-        </div>
-
-        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none opacity-40">
-            <div class="flex flex-col items-center animate-bounce">
-                <p class="font-mono text-xs tracking-widest uppercase whitespace-nowrap"><span class="lang-en">Scroll to explore</span><span class="lang-ru">Листай вниз</span></p>
-                <div class="w-px h-10 bg-white mt-3 opacity-70"></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stats Strip -->
-    <section id="stats" class="py-16 px-6 md:px-12 max-w-7xl mx-auto z-10 relative fade-up">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/5 border border-white/5">
-            <div class="bg-dark p-8 text-center"><div class="stat-num font-display text-4xl md:text-5xl" data-count="5">0</div><div class="font-mono text-[10px] uppercase tracking-[0.25em] text-grayish mt-3"><span class="lang-en">Projects shipped</span><span class="lang-ru">Выпущено проектов</span></div></div>
-            <div class="bg-dark p-8 text-center"><div class="stat-num font-display text-4xl md:text-5xl" data-count="6">0</div><div class="font-mono text-[10px] uppercase tracking-[0.25em] text-grayish mt-3"><span class="lang-en">Years coding</span><span class="lang-ru">Лет в коде</span></div></div>
-            <div class="bg-dark p-8 text-center"><div class="stat-num font-display text-4xl md:text-5xl" data-count="100" data-suffix="K+">0</div><div class="font-mono text-[10px] uppercase tracking-[0.25em] text-grayish mt-3"><span class="lang-en">Lines of code</span><span class="lang-ru">Строк кода</span></div></div>
-            <div class="bg-dark p-8 text-center"><div class="stat-num font-display text-4xl md:text-5xl" data-count="24" data-suffix="/7">0</div><div class="font-mono text-[10px] uppercase tracking-[0.25em] text-grayish mt-3"><span class="lang-en">Always shipping</span><span class="lang-ru">Всегда в релизе</span></div></div>
-        </div>
-    </section>
-
-    <!-- About Section -->
-    <section id="about" class="py-16 px-6 md:px-12 max-w-7xl mx-auto z-10 relative fade-up">
-        <div class="mb-10"><h3 class="font-display text-xl font-bold uppercase tracking-tight flex items-center gap-4 text-grayish"><span class="text-gray-600">/</span> <span class="lang-en">about</span><span class="lang-ru">о себе</span><div class="h-px bg-gray-800 flex-grow ml-4"></div></h3></div>
-        <div class="about-grid">
-            <div class="about-terminal">
-                <div class="about-terminal-bar"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span><span class="term-title">crlx1q — profile.json</span></div>
-                <div class="about-body" id="about-body">
-                    <div class="about-line"><span class="ak">"name"</span><span class="ak">:&nbsp;</span><span class="av">"CRLX1Q"</span><span class="ak">,</span></div>
-                    <div class="about-line"><span class="ak">"role"</span><span class="ak">:&nbsp;</span><span class="av">"Software Developer"</span><span class="ak">,</span></div>
-                    <div class="about-line"><span class="ak">"focus"</span><span class="ak">:&nbsp;</span><span class="ac"><span class="lang-en">["scalable arch", "neural nets", "aesthetic UI"]</span><span class="lang-ru">["масштаб. архитектура", "нейросети", "эстетичный UI"]</span></span><span class="ak">,</span></div>
-                    <div class="about-line"><span class="ak">"location"</span><span class="ak">:&nbsp;</span><span class="av"><span class="lang-en">"Kazakhstan"</span><span class="lang-ru">"Казахстан"</span></span><span class="ak">,</span></div>
-                    <div class="about-line"><span class="empty"></span></div>
-                    <div class="about-line"><span class="ak">"currently"</span><span class="ak">:&nbsp;</span><span class="am"><span class="lang-en">"building UMA messenger"</span><span class="lang-ru">"разрабатываю UMA messenger"</span></span><span class="ak">,</span></div>
-                    <div class="about-line"><span class="ak">"available"</span><span class="ak">:&nbsp;</span><span class="ac">true</span></div>
-                </div>
-            </div>
-            <div class="about-terminal about-skills-panel">
-                <div class="about-terminal-bar"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span><span class="term-title">crlx1q — skills.sh</span></div>
-                <div class="about-body">
-                    <div class="skills-header about-line"><span class="ak">$ </span><span class="ac">neofetch --skills</span></div>
-                    <div class="about-line"><span class="empty"></span></div>
-                    <div class="skill-row about-line" data-pct="88"><span class="skill-name ak">Backend</span><div class="skill-bar-wrap"><div class="skill-bar-fill"></div></div><span class="skill-pct">0%</span></div>
-                    <div class="skill-row about-line" data-pct="80"><span class="skill-name ak">Frontend</span><div class="skill-bar-wrap"><div class="skill-bar-fill"></div></div><span class="skill-pct">0%</span></div>
-                    <div class="skill-row about-line" data-pct="72"><span class="skill-name ak">ML / AI</span><div class="skill-bar-wrap"><div class="skill-bar-fill"></div></div><span class="skill-pct">0%</span></div>
-                    <div class="skill-row about-line" data-pct="65"><span class="skill-name ak">DevOps</span><div class="skill-bar-wrap"><div class="skill-bar-fill"></div></div><span class="skill-pct">0%</span></div>
-                    <div class="skill-row about-line" data-pct="78"><span class="skill-name ak">Systems</span><div class="skill-bar-wrap"><div class="skill-bar-fill"></div></div><span class="skill-pct">0%</span></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stack Marquee -->
-    <section id="stack" class="py-16 px-6 md:px-12 max-w-7xl mx-auto z-10 relative fade-up">
-        <div class="marquee">
-            <div class="marquee-track">
-                <span class="chip">TypeScript</span><span class="chip">React</span><span class="chip">Next.js</span><span class="chip">Node.js</span><span class="chip">Go</span><span class="chip">Python</span><span class="chip">PyTorch</span><span class="chip">PostgreSQL</span><span class="chip">Redis</span><span class="chip">Docker</span><span class="chip">K8s</span><span class="chip">Rust</span>
-                <span class="chip" aria-hidden="true">TypeScript</span><span class="chip" aria-hidden="true">React</span><span class="chip" aria-hidden="true">Next.js</span><span class="chip" aria-hidden="true">Node.js</span><span class="chip" aria-hidden="true">Go</span><span class="chip" aria-hidden="true">Python</span><span class="chip" aria-hidden="true">PyTorch</span><span class="chip" aria-hidden="true">PostgreSQL</span><span class="chip" aria-hidden="true">Redis</span><span class="chip" aria-hidden="true">Docker</span><span class="chip" aria-hidden="true">K8s</span><span class="chip" aria-hidden="true">Rust</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- Projects Section -->
-    <section id="projects" class="py-24 px-6 md:px-12 max-w-7xl mx-auto z-10 relative">
-        <div class="mb-16 fade-up">
-            <h3 class="font-display text-3xl font-bold uppercase tracking-tight flex items-center gap-4">
-                <span class="text-gray-600">/</span> <span class="lang-en">projects</span><span class="lang-ru">проекты</span>
-                <div class="h-px bg-gray-800 flex-grow ml-4"></div>
-            </h3>
-        </div>
-
-        <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- rendered by JS from PROJECTS array below -->
-        </div>
-    </section>
-
-    <!-- BLOG SECTION (Notes) -->
-    <section id="blog" class="py-16 px-6 md:px-12 max-w-7xl mx-auto z-10 relative fade-up">
-        <div class="mb-10">
-            <h3 class="font-display text-xl font-bold uppercase tracking-tight flex items-center gap-4 text-grayish">
-                <span class="text-gray-600">/</span> <span class="lang-en">notes & thoughts</span><span class="lang-ru">заметки и мысли</span>
-                <div class="h-px bg-gray-800 flex-grow ml-4"></div>
-            </h3>
-        </div>
-        <div id="latest-articles-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        <div class="mt-6 text-right">
-            <a href="/notes"  class="font-mono text-xs uppercase tracking-widest text-gray-500 hover:text-white transition-colors"><span class="lang-en">View all notes -></span><span class="lang-ru">Все заметки -></span></a>
-        </div>
-    </section>
-
-    <!-- COMMUNITY BOARD (Guestbook / Sticky notes) -->
-    <section id="board" class="py-24 px-6 md:px-12 max-w-7xl mx-auto z-10 relative fade-up">
-        <div class="mb-10">
-            <h3 class="font-display text-xl font-bold uppercase tracking-tight flex items-center gap-4 text-grayish">
-                <span class="text-gray-600">/</span> <span class="lang-en">community board</span><span class="lang-ru">гостевая доска</span>
-                <div class="h-px bg-gray-800 flex-grow ml-4"></div>
-            </h3>
-            <p class="font-mono text-xs text-gray-500 mt-2"><span class="lang-en">Leave an idea, feedback, or just say hi.</span><span class="lang-ru">Оставь идею, фидбек или просто поздоровайся.</span></p>
-        </div>
-        
-        <!-- Input Form -->
-        <div class="mb-12 flex flex-col max-w-2xl w-full">
-            <div id="note-input-wrap" class="p-1 bg-white/5 border border-white/10 rounded-lg flex items-center shadow-lg transition-all duration-300">
-                <input type="text" id="note-input" data-en-placeholder="Write something..." data-ru-placeholder="Напиши что-нибудь..." placeholder="Напиши что-нибудь..." class="flex-1 bg-transparent text-white font-mono text-sm px-4 py-3 focus:outline-none min-w-0" maxlength="120">
-                <span id="char-counter" class="font-mono text-[10px] text-gray-500 mr-4 shrink-0 transition-colors">0/120</span>
-                <button id="add-note-btn" class="shrink-0 font-mono text-xs px-6 py-3 bg-white text-black hover:bg-gray-300 transition-colors uppercase tracking-widest rounded-md font-bold"><span class="lang-en">Post Note</span><span class="lang-ru">Отправить</span></button>
-            </div>
-            <!-- Warning Alert (Hidden by default) -->
-            <div class="h-4 mt-2 px-2 flex items-center pointer-events-none">
-                <span id="char-warning" class="font-mono text-[10px] text-red-500 uppercase tracking-widest opacity-0 transition-opacity duration-300 flex items-center gap-2">
-                    <span class="inline-block animate-pulse emoji">⚠️</span>
-                    [ SYS.ERR ] Buffer overflow. 120 chars max.
-                </span>
-            </div>
-        </div>
-
-        <!-- Notes Grid (Masonry effect using CSS Columns) -->
-        <div id="notes-masonry" class="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6">
-            <!-- Notes injected by JS -->
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer id="contact" class="py-12 border-t border-gray-900 z-10 relative mt-10">
-        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div class="flex flex-col gap-3">
-                <div class="flex items-center gap-3">
-                    <img src="/logo.png" alt="CRLX1Q" class="theme-protect" style="width:32px;height:32px;object-fit:contain;opacity:0.6;transition:opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
-                    <div class="font-mono text-gray-500 text-sm">© crlx1q.com. <span class="lang-en">All rights reserved.</span><span class="lang-ru">Все права защищены.</span></div>
-                </div>
-                <div class="flex items-center gap-2 font-mono text-[10px] text-gray-700 tracking-widest uppercase select-none">
-                    <span class="inline-flex items-center gap-1.5 border border-gray-800 rounded px-2 py-0.5 hover:border-gray-600 hover:text-gray-500 transition-colors duration-300 cursor-default">
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="opacity-60"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                        <span id="server-version">v2.4.1</span>
-                    </span>
-                    <span class="text-gray-800">·</span>
-                    <span class="text-gray-700" title="Build date">build&nbsp;<span class="text-gray-600">2026.05.29</span></span>
-                    <span class="text-gray-800">·</span>
-                    <span id="footer-uptime-badge" class="inline-flex items-center gap-1" title="Session uptime">
-                        <span class="w-1.5 h-1.5 rounded-full bg-green-600 opacity-70 animate-pulse"></span>
-                        <span id="footer-uptime">00:00:00</span>
-                    </span>
-                </div>
-            </div>
-            <div class="flex gap-8 font-mono text-sm">
-                <a href="https://github.com/crlx1q" target="_blank" rel="noopener" class="text-gray-400 hover:text-white transition-colors">[ GitHub ]</a>
-                <a href="https://t.me/Alisheruy" target="_blank" rel="noopener" class="text-gray-400 hover:text-white transition-colors">[ Telegram ]</a>
-                <a href="mailto:contact@crlx1q.pro" class="text-gray-400 hover:text-white transition-colors">[ Email ]</a>
-            </div>
-        </div>
-    </footer>
-
-    </div><!-- /content-wrap -->
+    <!-- /content-wrap -->
 
     <!-- SPA: Notes Page -->
-    
+    <div id="spa-notes" class="spa-page active" style="display:block;">
+        <div class="spa-page-header">
+            <a href="/" class="spa-back-btn" >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                <span class="lang-en">Back</span><span class="lang-ru">Назад</span>
+            </a>
+            <h1><span class="lang-en">/ notes & thoughts</span><span class="lang-ru">/ заметки и мысли</span></h1>
+            <p><span class="lang-en">Technical articles, dev logs, and random thoughts</span><span class="lang-ru">Технические статьи, девлоги и случайные мысли</span></p>
+        </div>
+        <div class="max-w-[900px] mx-auto px-6 pb-24">
+            <div id="articles-grid" class="grid grid-cols-1 gap-4"></div>
+        </div>
+    </div>
 
     <!-- SPA: Board Page -->
     
 
-    <script src="/main.js"></script>\n
+    <script src="/main.js"></script>
+
 </body>
 </html>
