@@ -78,6 +78,7 @@ document.querySelectorAll('.sb-link[data-target]').forEach(btn => {
         if (t === 'articles')  loadArticles();
         if (t === 'projects')  loadProjects();
         if (t === 'board')     loadBoard();
+        if (t === 'space-users') loadSpaceUsers();
     });
 });
 
@@ -319,3 +320,83 @@ async function deleteBoardMsg(id) {
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+/* ── SPACE USERS ──────────────────────────────── */
+let spaceUsers = [];
+
+async function loadSpaceUsers() {
+    const data = await api('/api/admin/space/users');
+    if (!data) return;
+    spaceUsers = data;
+
+    const total   = data.length;
+    const pending = data.filter(u => !u.newReg).length;
+    const active  = data.filter(u => u.newReg).length;
+
+    document.getElementById('su-total').textContent   = total;
+    document.getElementById('su-pending').textContent = pending;
+    document.getElementById('su-active').textContent  = active;
+
+    // Show/hide pending badge in sidebar
+    const badge = document.getElementById('pending-badge');
+    if (badge) badge.style.display = pending > 0 ? 'inline' : 'none';
+
+    const tbody = document.getElementById('space-users-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = data.map(u => {
+        const regDate  = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—';
+        const lastSeen = u.lastSeen  ? new Date(u.lastSeen).toLocaleString()      : '—';
+        const statusTag = u.newReg
+            ? `<span class="tag tag-g">approved</span>`
+            : `<span class="tag tag-y">pending</span>`;
+        const roleCls = u.role === 'owner' ? 'tag-g' : u.role === 'viewer' ? 'tag-r' : '';
+        const toggleLabel = u.newReg ? 'Revoke' : 'Approve';
+        const toggleCls   = u.newReg ? 'act-d' : 'act-e';
+
+        return `<tr>
+            <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <div style="width:26px;height:26px;border:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:${u.color||'#111'}20;color:${u.color||'#888'}">${(u.username||'?')[0].toUpperCase()}</div>
+                    <div>
+                        <div style="font-weight:600;font-size:12px">${u.username}</div>
+                        <div style="font-size:9px;color:var(--muted)">${u.email}</div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="tag ${roleCls}">${u.role}</span></td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${regDate}</td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)">${lastSeen}</td>
+            <td>${statusTag}</td>
+            <td class="td-r">
+                <button class="act ${toggleCls}" onclick="toggleSpaceApproval('${u._id}', ${!u.newReg})">${toggleLabel}</button>
+                <button class="act" style="color:var(--dim)" onclick="changeSpaceRole('${u._id}', '${u.role}')">${u.role === 'owner' ? 'owner' : '&#8645; role'}</button>
+                <button class="act act-d" onclick="deleteSpaceUser('${u._id}', '${u.username}')">del</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function toggleSpaceApproval(id, approve) {
+    const label = approve ? 'approve' : 'revoke';
+    if (!confirm(`${label} access for this user?`)) return;
+    await api('/api/admin/space/users/' + id, 'PATCH', { newReg: approve });
+    loadSpaceUsers();
+}
+
+async function changeSpaceRole(id, currentRole) {
+    const roles = ['member', 'viewer', 'owner'];
+    const next = roles[(roles.indexOf(currentRole) + 1) % roles.length];
+    if (!confirm(`Change role to "${next}"?`)) return;
+    await api('/api/admin/space/users/' + id, 'PATCH', { role: next });
+    loadSpaceUsers();
+}
+
+async function deleteSpaceUser(id, username) {
+    if (!confirm(`Delete user "${username}" permanently?\n\nThis will NOT delete their canvas data.`)) return;
+    await api('/api/admin/space/users/' + id, 'DELETE');
+    loadSpaceUsers();
+}
+
+// Auto-check pending users after login
+const _origShowApp = showApp;

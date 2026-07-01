@@ -3,3 +3,5 @@ node_modules/
 *.tmp
 .DS_Store
 uptime_db.json
+.env
+.env.local

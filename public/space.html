@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CRLX1Q | Space</title>
+    <meta name="description" content="Space — Interactive infinite canvas by CRLX1Q">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Space">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;300;400;500;700;800&family=Major+Mono+Display&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/space.css">
+</head>
+<body>
+
+<!-- ══════════════ AUTH SCREEN ══════════════ -->
+<div id="auth-screen">
+    <canvas id="auth-matrix" class="auth-bg-matrix"></canvas>
+    <div class="auth-container">
+        <div class="auth-logo">CRL<span>.</span>X1Q <span style="color:var(--dim);font-size:14px">// SPACE</span></div>
+
+        <div class="auth-tabs">
+            <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Login</button>
+            <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Request Access</button>
+        </div>
+
+        <!-- Login panel -->
+        <div class="auth-panel" id="panel-login">
+            <div class="auth-titlebar">
+                <div class="auth-dots">
+                    <span class="dot-r"></span>
+                    <span class="dot-y"></span>
+                    <span class="dot-g"></span>
+                </div>
+                <div class="auth-titlebar-txt">auth — secure_shell</div>
+            </div>
+            <div class="auth-body">
+                <div class="form-group">
+                    <label class="auth-label">Username</label>
+                    <div class="auth-field">
+                        <span class="auth-field-prefix">~$&nbsp;</span>
+                        <input type="text" id="login-username" placeholder="username" autocomplete="username" spellcheck="false">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="auth-label">Password</label>
+                    <div class="auth-field">
+                        <span class="auth-field-prefix">~$&nbsp;</span>
+                        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+                    </div>
+                </div>
+                <div class="auth-err" id="login-err">// ACCESS DENIED</div>
+                <button class="auth-btn" id="login-btn" onclick="handleLogin()">
+                    <span>Initialize Session</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Register panel -->
+        <div class="auth-panel" id="panel-register" style="display:none">
+            <div class="auth-titlebar">
+                <div class="auth-dots">
+                    <span class="dot-r"></span>
+                    <span class="dot-y"></span>
+                    <span class="dot-g"></span>
+                </div>
+                <div class="auth-titlebar-txt">request_access — new_user</div>
+            </div>
+            <div class="auth-body">
+                <div class="form-group">
+                    <label class="auth-label">Username</label>
+                    <div class="auth-field">
+                        <span class="auth-field-prefix">~$&nbsp;</span>
+                        <input type="text" id="reg-username" placeholder="choose_username" spellcheck="false">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="auth-label">Email</label>
+                    <div class="auth-field">
+                        <span class="auth-field-prefix">~$&nbsp;</span>
+                        <input type="email" id="reg-email" placeholder="your@email.com">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="auth-label">Password</label>
+                    <div class="auth-field">
+                        <span class="auth-field-prefix">~$&nbsp;</span>
+                        <input type="password" id="reg-password" placeholder="min 8 chars">
+                    </div>
+                </div>
+                <div class="auth-err" id="reg-err">// Registration failed</div>
+                <div class="auth-pending" id="reg-pending">
+                    ✓ REQUEST SENT — Awaiting admin approval.<br>
+                    <span style="color:var(--dim);font-size:9px">You will be notified when access is granted.</span>
+                </div>
+                <button class="auth-btn" id="reg-btn" onclick="handleRegister()">
+                    <span>Request Access</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ MAIN APP ══════════════ -->
+<div id="app">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+        <a href="/" class="topbar-brand">
+            <span class="topbar-brand-name">CRLX1Q</span>
+        </a>
+        <span class="topbar-sep">//</span>
+
+        <!-- CANVAS SWITCHER -->
+        <div class="canvas-switcher">
+            <button class="canvas-switcher-btn" onclick="toggleCanvasDropdown()" title="Switch canvas">
+                <span class="topbar-space-name" id="space-name-display" ondblclick="renameSpace()">My Space</span>
+                <span class="role-badge" id="role-badge" style="display:none"></span>
+                <svg class="canvas-switcher-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="canvas-dropdown" id="canvas-dropdown">
+                <div class="canvas-dropdown-label">Your canvases</div>
+                <div class="canvas-dropdown-list" id="canvas-dropdown-list"></div>
+                <button class="canvas-new-btn" id="canvas-new-btn" onclick="createCanvas()">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    New Canvas
+                </button>
+            </div>
+        </div>
+
+        <div class="topbar-center">
+            <div class="topbar-status">
+                <div class="topbar-status-dot" id="ws-dot"></div>
+                <span id="ws-status">connecting...</span>
+            </div>
+        </div>
+
+        <div class="topbar-right">
+            <!-- Online count with tooltip -->
+            <div class="online-count" id="online-count">
+                <div class="dot"></div>
+                <span id="online-num">1</span>
+                <div id="online-tooltip"></div>
+            </div>
+
+            <!-- Trash bin (owner + editors) -->
+            <button class="topbar-btn" id="canvas-trash-btn" onclick="openTrashModal()" title="Trash bin" style="display:none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+            </button>
+
+            <!-- Access management (owner only) -->
+            <button class="topbar-btn" id="canvas-access-btn" onclick="openAccessModal()" title="Manage access" style="display:none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+            </button>
+
+            <!-- Theme toggle (Stage 6) -->
+            <button class="topbar-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            </button>
+
+            <a href="/admin" class="topbar-btn" id="admin-link" style="display:none">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                Admin
+            </a>
+            <button class="topbar-btn" id="team-chat-btn" onclick="toggleTeamChat()" title="Team chat">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+                Chat
+            </button>
+            <button class="topbar-btn active" id="ai-toggle-btn" onclick="toggleAIPanel()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a4 4 0 100 8 4 4 0 000-8zM4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                AI Chat
+            </button>
+            <div class="topbar-avatar" id="user-avatar" onclick="showUserMenu()">U</div>
+        </div>
+    </header>
+
+    <!-- WORKSPACE -->
+    <div class="workspace">
+
+        <!-- LEFT TOOLBAR -->
+        <nav class="toolbar" id="toolbar">
+            <button class="tool-btn active" id="tool-select" data-tool="select" onclick="setTool('select')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l7 19 4-8 8-4-19-7z"/></svg>
+                <span class="tool-tooltip">Select <span class="kbd">V</span></span>
+            </button>
+            <button class="tool-btn" id="tool-pan" data-tool="pan" onclick="setTool('pan')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l-4 4 4 4M15 11l4 4-4 4M8 15h8M12 3v4"/></svg>
+                <span class="tool-tooltip">Pan <span class="kbd">H</span></span>
+            </button>
+
+            <div class="tool-sep edit-only"></div>
+
+            <button class="tool-btn edit-only" id="tool-note" data-tool="note" onclick="setTool('note')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="0"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>
+                <span class="tool-tooltip">Note <span class="kbd">N</span></span>
+            </button>
+            <button class="tool-btn edit-only" id="tool-file" data-tool="file" onclick="triggerFileUpload()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                <span class="tool-tooltip">Upload File <span class="kbd">F</span></span>
+            </button>
+            <button class="tool-btn edit-only" id="tool-connect" data-tool="connect" onclick="setTool('connect')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><path d="M7 12h10"/></svg>
+                <span class="tool-tooltip">Connect <span class="kbd">C</span></span>
+            </button>
+            <button class="tool-btn edit-only" id="tool-draw" data-tool="draw" onclick="setTool('draw')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+                <span class="tool-tooltip">Draw <span class="kbd">P</span></span>
+            </button>
+            <button class="tool-btn edit-only" id="tool-eraser" data-tool="eraser" onclick="setTool('eraser')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 20H7L3 16a2 2 0 010-3l9-9a2 2 0 013 0l5 5a2 2 0 010 3l-7 7"/><path d="M9 9l6 6"/></svg>
+                <span class="tool-tooltip">Eraser <span class="kbd">E</span></span>
+            </button>
+            <button class="tool-btn edit-only" id="tool-palette" onclick="togglePalette(event)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6 2 11c0 4 3 7 7 7 1 0 2-1 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2 0-1 .8-1.8 1.8-1.8H14c4 0 6-2.5 6-6 0-3.6-3.6-6.7-8-6.7z"/></svg>
+                <span class="tool-tooltip">Palette</span>
+                <span class="pen-color-dot" id="pen-color-dot"></span>
+            </button>
+
+            <!-- Square colour palette popover -->
+            <div class="palette-pop" id="palette-pop">
+                <div class="palette-pop-label">Color</div>
+                <div class="palette-grid" id="palette-grid"></div>
+                <div class="palette-pop-label">Pen</div>
+                <div class="palette-widths" id="palette-widths">
+                    <button class="pen-width-btn" data-width="2" onclick="setPenWidth(2)"><span style="height:2px"></span></button>
+                    <button class="pen-width-btn active" data-width="4" onclick="setPenWidth(4)"><span style="height:4px"></span></button>
+                    <button class="pen-width-btn" data-width="8" onclick="setPenWidth(8)"><span style="height:8px"></span></button>
+                </div>
+            </div>
+
+            <div class="tool-sep edit-only"></div>
+
+            <button class="tool-btn edit-only" onclick="undoAction()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 10h10a4 4 0 010 8H7M3 10l4-4M3 10l4 4"/></svg>
+                <span class="tool-tooltip">Undo <span class="kbd">Ctrl+Z</span></span>
+            </button>
+            <button class="tool-btn edit-only" onclick="redoAction()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10H11a4 4 0 000 8h6M21 10l-4-4M21 10l-4 4"/></svg>
+                <span class="tool-tooltip">Redo <span class="kbd">Ctrl+Y</span></span>
+            </button>
+
+            <div class="tool-sep"></div>
+
+            <button class="tool-btn" onclick="fitView()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4M21 9V5a2 2 0 00-2-2h-4M21 15v4a2 2 0 01-2 2h-4"/></svg>
+                <span class="tool-tooltip">Fit View <span class="kbd">0</span></span>
+            </button>
+            <button class="tool-btn edit-only" onclick="clearCanvas()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+                <span class="tool-tooltip">Clear Canvas</span>
+            </button>
+        </nav>
+
+        <!-- CANVAS AREA -->
+        <div id="canvas-area">
+            <div id="canvas-hint">
+                <div class="hint-title">SPACE</div>
+                <div class="hint-sub">// your infinite canvas</div>
+                <div class="hint-shortcuts">
+                    <div class="hint-key"><span class="kbd">N</span> Note</div>
+                    <div class="hint-key"><span class="kbd">F</span> File</div>
+                    <div class="hint-key"><span class="kbd">C</span> Connect</div>
+                    <div class="hint-key"><span class="kbd">Dbl-click</span> New note</div>
+                </div>
+            </div>
+
+            <div id="canvas-world" style="transform-origin: 0 0">
+                <!-- SVG EDGES LAYER -->
+                <svg id="edges-svg" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <marker id="arrow-marker" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                            <path d="M0,0 L0,6 L6,3 z" fill="rgba(128,128,128,0.3)"/>
+                        </marker>
+                    </defs>
+                    <g id="draw-group"></g>
+                    <path id="draw-preview" class="draw-stroke" style="display:none" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <g id="edges-group"></g>
+                    <path id="edge-preview" class="edge-preview" style="display:none"/>
+                </svg>
+                <!-- NODES LAYER -->
+                <div id="nodes-layer"></div>
+            </div>
+
+            <!-- CURSORS LAYER — outside canvas-world in screen space (Stage 2) -->
+            <div id="cursors-layer"></div>
+
+            <!-- Selection box -->
+            <div id="select-box"></div>
+
+            <!-- Updating indicator (Stage 1) -->
+            <div id="updating-indicator">
+                <div class="updating-dot"></div>
+                updating...
+            </div>
+
+            <!-- Minimap -->
+            <div id="minimap">
+                <canvas id="minimap-canvas"></canvas>
+            </div>
+
+            <!-- Zoom controls -->
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(-0.1)">−</button>
+                <div class="zoom-level" id="zoom-display">100%</div>
+                <button class="zoom-btn" onclick="changeZoom(0.1)">+</button>
+            </div>
+        </div>
+
+        <!-- RIGHT AI PANEL -->
+        <aside id="ai-panel">
+            <button class="ai-panel-toggle" id="ai-panel-toggle-btn" onclick="toggleAIPanel()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </button>
+
+            <div class="ai-panel-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted)"><path d="M12 2a4 4 0 100 8 4 4 0 000-8zM4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                <span class="ai-panel-title">AI Agent</span>
+                <span class="ai-model-badge">gemini-3.1-flash-lite</span>
+                <button class="topbar-btn" style="padding:3px 7px" onclick="clearAIChat()" title="Clear chat">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6l-1 14H6L5 6"/></svg>
+                </button>
+            </div>
+
+            <!-- Context bar (pinned nodes) -->
+            <div class="ai-context-bar" id="ai-context-bar" style="display:none">
+                <span class="ai-context-label">CTX:</span>
+                <div id="ai-context-chips"></div>
+            </div>
+
+            <!-- Quick actions -->
+            <div class="ai-actions">
+                <button class="ai-quick-btn" onclick="aiQuickAction('summarize')">Summarize canvas</button>
+                <button class="ai-quick-btn" onclick="aiQuickAction('organize')">Suggest structure</button>
+                <button class="ai-quick-btn" onclick="aiQuickAction('idea')">Generate ideas</button>
+            </div>
+
+            <!-- Messages -->
+            <div class="ai-messages" id="ai-messages">
+                <div class="ai-msg ai">
+                    <div class="ai-msg-role">space_ai</div>
+                    <div class="ai-msg-body">Привет! Я вижу твой холст и могу помочь организовать идеи, создавать заметки и анализировать структуру. Что создадим?</div>
+                </div>
+            </div>
+
+            <!-- "someone is typing to the AI" indicator -->
+            <div id="ai-typing-indicator" class="ai-typing-line" style="display:none"></div>
+
+            <!-- Input area -->
+            <div class="ai-input-area">
+                <div class="ai-input-row">
+                    <textarea class="ai-input" id="ai-input" placeholder="// ask AI agent..." rows="1"
+                        onkeydown="aiInputKeydown(event)" oninput="autoResizeAI(this)"></textarea>
+                    <button class="ai-send-btn" id="ai-send-btn" onclick="sendAIMessage()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ══════════════ TEAM GROUP CHAT ══════════════ -->
+    <section id="team-chat" class="mode-panel" style="display:none">
+        <div class="team-chat-header" id="team-chat-header">
+            <span class="team-chat-title">// TEAM</span>
+            <div class="team-chat-presence" id="team-chat-presence"></div>
+            <div class="team-chat-modes">
+                <button class="tc-mode-btn" data-mode="panel" onclick="setChatMode('panel')" title="Dock right">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                </button>
+                <button class="tc-mode-btn" data-mode="floating" onclick="setChatMode('floating')" title="Floating window">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="14"/><line x1="4" y1="9" x2="20" y2="9"/></svg>
+                </button>
+                <button class="tc-mode-btn" data-mode="canvas" onclick="setChatMode('canvas')" title="Pin to canvas">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v6M12 8l3-2M12 8L9 6"/><rect x="5" y="10" width="14" height="11"/></svg>
+                </button>
+            </div>
+            <button class="tc-icon-btn" onclick="clearTeamChat()" title="Clear chat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6l-1 14H6L5 6"/></svg>
+            </button>
+            <button class="tc-icon-btn" onclick="toggleTeamChat()" title="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="team-chat-messages" id="team-chat-messages"></div>
+        <div id="team-chat-typing" class="team-chat-typing" style="display:none"></div>
+        <div class="team-chat-input-area">
+            <textarea class="team-chat-input" id="team-chat-input" rows="1" placeholder="// message team — use @agent to ask AI"
+                onkeydown="teamChatKeydown(event)" oninput="teamChatInput(this)"></textarea>
+            <button class="team-chat-send" id="team-chat-send" onclick="sendTeamChat()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+            </button>
+        </div>
+    </section>
+</div>
+
+<!-- ══════════════ CONTEXT MENU ══════════════ -->
+<div id="context-menu">
+    <div class="ctx-section" id="ctx-node-section" style="display:none">
+        <div class="ctx-item" onclick="ctxEditNode()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit Note <span class="ctx-shortcut">Enter</span>
+        </div>
+        <div class="ctx-item" onclick="ctxPinToAI()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Pin to AI Context
+        </div>
+        <div class="ctx-item" onclick="ctxDuplicateNode()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="0"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Duplicate <span class="ctx-shortcut">Ctrl+D</span>
+        </div>
+    </div>
+    <div class="ctx-section" id="ctx-color-section" style="display:none">
+        <div class="ctx-item" style="flex-wrap:wrap;gap:8px;padding-bottom:10px">
+            <span style="font-size:8px;color:var(--dim);width:100%;letter-spacing:0.1em">COLOR:</span>
+            <div class="color-swatch" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3)" onclick="ctxSetColor('white')"></div>
+            <div class="color-swatch" style="background:rgba(96,165,250,0.25);border:1px solid rgba(96,165,250,0.4)" onclick="ctxSetColor('blue')"></div>
+            <div class="color-swatch" style="background:rgba(74,222,128,0.25);border:1px solid rgba(74,222,128,0.4)" onclick="ctxSetColor('green')"></div>
+            <div class="color-swatch" style="background:rgba(192,132,252,0.25);border:1px solid rgba(192,132,252,0.4)" onclick="ctxSetColor('purple')"></div>
+            <div class="color-swatch" style="background:rgba(250,204,21,0.25);border:1px solid rgba(250,204,21,0.4)" onclick="ctxSetColor('yellow')"></div>
+            <div class="color-swatch" style="background:rgba(239,68,68,0.25);border:1px solid rgba(239,68,68,0.4)" onclick="ctxSetColor('red')"></div>
+            <div class="color-swatch" style="background:transparent;border:1px solid var(--border)" onclick="ctxSetColor('')"></div>
+        </div>
+    </div>
+    <div class="ctx-section" id="ctx-add-section">
+        <div class="ctx-item" onclick="ctxAddNote()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18"/><path d="M12 8v8M8 12h8"/></svg>
+            Add Note here
+        </div>
+        <div class="ctx-item" onclick="selectAll()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            Select All <span class="ctx-shortcut">Ctrl+A</span>
+        </div>
+    </div>
+    <div class="ctx-section" id="ctx-delete-section" style="display:none">
+        <div class="ctx-item danger" onclick="ctxDeleteSelected()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+            Delete <span class="ctx-shortcut">Del</span>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ NODE EDITOR MODAL ══════════════ -->
+<div class="modal-overlay" id="node-edit-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title"><span class="w">Edit</span> Node</span>
+            <button class="modal-close" onclick="closeModal('node-edit-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input class="form-input" id="edit-node-title" placeholder="Node title..." spellcheck="false">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Content</label>
+                <textarea class="form-textarea" id="edit-node-content" placeholder="Node content..." rows="5"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Color</label>
+                <div class="form-color-row" id="edit-color-row">
+                    <div class="color-swatch" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3)" data-color="white" onclick="selectEditColor(this)"></div>
+                    <div class="color-swatch" style="background:rgba(96,165,250,0.25);border:1px solid rgba(96,165,250,0.4)" data-color="blue" onclick="selectEditColor(this)"></div>
+                    <div class="color-swatch" style="background:rgba(74,222,128,0.25);border:1px solid rgba(74,222,128,0.4)" data-color="green" onclick="selectEditColor(this)"></div>
+                    <div class="color-swatch" style="background:rgba(192,132,252,0.25);border:1px solid rgba(192,132,252,0.4)" data-color="purple" onclick="selectEditColor(this)"></div>
+                    <div class="color-swatch" style="background:rgba(250,204,21,0.25);border:1px solid rgba(250,204,21,0.4)" data-color="yellow" onclick="selectEditColor(this)"></div>
+                    <div class="color-swatch" style="background:rgba(239,68,68,0.25);border:1px solid rgba(239,68,68,0.4)" data-color="red" onclick="selectEditColor(this)"></div>
+                    <div class="color-swatch active" style="background:transparent;border:1px solid var(--border)" data-color="" onclick="selectEditColor(this)"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('node-edit-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveNodeEdit()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ ACCESS / PERMISSIONS MODAL ══════════════ -->
+<div class="modal-overlay" id="access-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title"><span class="w">Manage</span> Access</span>
+            <button class="modal-close" onclick="closeModal('access-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="access-hint">// assign per-user roles for this canvas — readers can only view, editors can edit</div>
+            <div class="access-list" id="access-list"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('access-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveAccess()">Save Access</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ TRASH BIN MODAL ══════════════ -->
+<div class="modal-overlay" id="trash-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title"><span class="w">Trash</span> Bin</span>
+            <button class="modal-close" onclick="closeModal('trash-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="access-hint">// deleted items are kept here for 30 minutes, then purged permanently</div>
+            <div class="trash-list" id="trash-list"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="loadTrash()">Refresh</button>
+            <button class="btn btn-primary" onclick="closeModal('trash-modal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- FILE UPLOAD INPUT (hidden) -->
+<input type="file" id="file-input" style="display:none" multiple onchange="handleFileSelect(event)">
+
+<!-- DROP OVERLAY -->
+<div id="drop-overlay">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(128,128,128,0.4)" stroke-width="1"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+    <div class="drop-text">Drop files to upload</div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- SOCKET.IO -->
+<script src="/socket.io/socket.io.js"></script>
+<!-- SPACE APP LOGIC -->
+<script src="/space.js"></script>
+</body>
+</html>

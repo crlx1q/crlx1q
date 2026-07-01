@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#000000"/>
+  <rect x="40" y="40" width="432" height="432" fill="none" stroke="#ffffff" stroke-width="6" opacity="0.25"/>
+  <g fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="square">
+    <path d="M330 176 C330 132, 182 124, 182 196 C182 256, 330 244, 330 312 C330 384, 176 380, 176 332"/>
+  </g>
+  <circle cx="256" cy="256" r="8" fill="#ffffff" opacity="0.0"/>
+  <text x="256" y="452" font-family="monospace" font-size="34" fill="#ffffff" opacity="0.45" text-anchor="middle" letter-spacing="6">SPACE</text>
+</svg>
