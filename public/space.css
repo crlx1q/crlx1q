@@ -214,9 +214,9 @@ html, body {
 #tool-palette { position:relative; }
 .pen-color-dot { position:absolute;right:3px;bottom:3px;width:7px;height:7px;border:1px solid var(--bg);background:#9aa0a6;pointer-events:none; }
 
-/* ── Square colour palette popover ── */
+/* ── Square colour palette popover (fixed; JS sets left/top) ── */
 .palette-pop {
-    position:absolute;left:calc(100% + 12px);top:0;z-index:1400;display:none;
+    position:fixed;z-index:1400;display:none;
     flex-direction:column;gap:7px;padding:10px;width:132px;
     background:var(--ctx-bg);border:1px solid var(--border-h);box-shadow:var(--shadow);backdrop-filter:var(--glass);
 }
@@ -697,12 +697,21 @@ body.drawing-mode .space-node { cursor:inherit; }
     .tool-sep { width:1px;height:22px;margin:0 4px; }
     /* tooltips above the bottom bar */
     .tool-tooltip { top:auto;bottom:calc(100% + 8px);left:50%;right:auto;transform:translateX(-50%); }
-    /* palette opens above the bottom toolbar */
-    .palette-pop { left:auto;right:0;top:auto;bottom:calc(100% + 10px); }
-    /* team chat takes the full screen on mobile regardless of mode */
+    /* palette: wider grid + bigger swatches for touch (position set by JS) */
+    .palette-grid { grid-template-columns:repeat(7,1fr); }
+    .palette-swatch { width:30px;height:30px; }
+    .palette-pop { width:auto;max-width:94vw; }
+
+    /* team chat: full-height sheet below the topbar; hide desktop-only controls */
     #team-chat.mode-panel, #team-chat.mode-floating, #team-chat.mode-canvas {
-        inset:44px 0 64px 0;width:auto;height:auto;left:0;right:0;top:44px;
+        inset:44px 0 0 0;width:auto;height:auto;left:0;right:0;top:44px;
     }
+    #team-chat .team-chat-modes, #team-chat .tc-resize { display:none; }
+    .team-chat-input { font-size:16px; }        /* ≥16px stops iOS auto-zoom on focus */
+    /* AI panel: wider, comfortable drawer on phones */
+    #ai-panel { width:min(92vw,400px); }
+    #ai-panel.collapsed { width:min(92vw,400px); }
+    .ai-input { font-size:16px; }
 
     #minimap { display:none; }
     .zoom-controls { left:auto;right:8px;bottom:72px; }

@@ -896,6 +896,23 @@ io.on('connection', (socket) => {
 async function handleRequest(req, res) {
     const url = req.url.split('?')[0];
     const method = req.method;
+    const host = req.headers.host || '';
+
+    // ── Domain Redirects ──
+    if (host.includes('crlx1q.com') && !host.startsWith('space.')) {
+        if (url === '/space' || url === '/space/') {
+            res.writeHead(302, { Location: `https://space.crlx1q.com/` });
+            return res.end();
+        }
+        if (url.startsWith('/space/canvas')) {
+            res.writeHead(302, { Location: `https://space.crlx1q.com${url.replace('/space', '')}` });
+            return res.end();
+        }
+        if (url.startsWith('/canvas')) {
+            res.writeHead(302, { Location: `https://space.crlx1q.com${url}` });
+            return res.end();
+        }
+    }
 
     // ── Health ──
     if (url === '/health' && method === 'GET') {
@@ -2003,7 +2020,8 @@ async function handleRequest(req, res) {
     }
 
     // ── Serve Space (also handles /canvas/:slug — slug resolved client-side) ──
-    if (url === '/space' || url === '/space/' || url === '/canvas' || url === '/canvas/' || /^\/canvas\/[A-Za-z0-9_-]+$/.test(url)) {
+    const isSpaceRoot = host.startsWith('space.') && url === '/';
+    if (isSpaceRoot || url === '/space' || url === '/space/' || url === '/canvas' || url === '/canvas/' || /^\/canvas\/[A-Za-z0-9_-]+$/.test(url)) {
         if (fs.existsSync(path.join(PUBLIC_DIR, 'space.html'))) {
             res.writeHead(200, getSecurityHeaders('text/html'));
             return res.end(fs.readFileSync(path.join(PUBLIC_DIR, 'space.html')));

@@ -228,18 +228,6 @@
                 <span class="pen-color-dot" id="pen-color-dot"></span>
             </button>
 
-            <!-- Square colour palette popover -->
-            <div class="palette-pop" id="palette-pop">
-                <div class="palette-pop-label">Color</div>
-                <div class="palette-grid" id="palette-grid"></div>
-                <div class="palette-pop-label">Pen</div>
-                <div class="palette-widths" id="palette-widths">
-                    <button class="pen-width-btn" data-width="2" onclick="setPenWidth(2)"><span style="height:2px"></span></button>
-                    <button class="pen-width-btn active" data-width="4" onclick="setPenWidth(4)"><span style="height:4px"></span></button>
-                    <button class="pen-width-btn" data-width="8" onclick="setPenWidth(8)"><span style="height:8px"></span></button>
-                </div>
-            </div>
-
             <div class="tool-sep edit-only"></div>
 
             <button class="tool-btn edit-only" onclick="undoAction()">
@@ -406,6 +394,18 @@
         </div>
         <div class="tc-resize" id="tc-resize" title="Resize"></div>
     </section>
+
+    <!-- Square colour palette popover (positioned via JS next to the toolbar button) -->
+    <div class="palette-pop" id="palette-pop">
+        <div class="palette-pop-label">Color</div>
+        <div class="palette-grid" id="palette-grid"></div>
+        <div class="palette-pop-label">Pen</div>
+        <div class="palette-widths" id="palette-widths">
+            <button class="pen-width-btn" data-width="2" onclick="setPenWidth(2)"><span style="height:2px"></span></button>
+            <button class="pen-width-btn active" data-width="4" onclick="setPenWidth(4)"><span style="height:4px"></span></button>
+            <button class="pen-width-btn" data-width="8" onclick="setPenWidth(8)"><span style="height:8px"></span></button>
+        </div>
+    </div>
 </div>
 
 <!-- ══════════════ CONTEXT MENU ══════════════ -->

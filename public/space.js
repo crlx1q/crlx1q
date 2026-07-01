@@ -552,17 +552,23 @@ function onTouchStart(e) {
             const target = document.elementFromPoint(t.clientX, t.clientY);
             if (target && target.closest('[contenteditable="true"], .node-action-btn, a, .node-port, .node-resize, audio, video, .file-media-preview, .file-audio-preview')) continue;
             const id = nodeIdAtPoint(t.clientX, t.clientY);
-            if (!id || [...touchDrags.values()].some(d => d.nodeId === id)) continue;
+            if (!id || [...touchDrags.values()].some(d => d.nodeId === id || (d.group && d.group.has(id)))) continue;
             const node = state.nodes.get(id);
             if (!node) continue;
             selectNode(id);
             const left = parseInt(node.el.style.left) || 0, top = parseInt(node.el.style.top) || 0;
-            touchDrags.set(t.identifier, {
+            const entry = {
                 nodeId: id,
                 offX: (t.clientX - rect.left) - (left * state.viewport.zoom + state.viewport.x),
                 offY: (t.clientY - rect.top)  - (top  * state.viewport.zoom + state.viewport.y),
-                moved: false, start: { x: left, y: top }
-            });
+                moved: false, start: { x: left, y: top }, group: null
+            };
+            // If several nodes are selected, this finger moves the whole group together
+            if (state.selected.has(id) && state.selected.size > 1) {
+                entry.group = new Map();
+                state.selected.forEach(sid => { const sn = state.nodes.get(sid); if (sn) entry.group.set(sid, { ...sn.data.position }); });
+            }
+            touchDrags.set(t.identifier, entry);
             started = true;
         }
         if (started || touchDrags.size) { e.preventDefault(); return; }
@@ -584,7 +590,13 @@ function onTouchMove(e) {
             const d = touchDrags.get(t.identifier);
             if (!d) continue;
             const w = screenToWorld((t.clientX - rect.left) - d.offX, (t.clientY - rect.top) - d.offY);
-            moveNode(d.nodeId, Math.round(w.x / 8) * 8, Math.round(w.y / 8) * 8);
+            const sx = Math.round(w.x / 8) * 8, sy = Math.round(w.y / 8) * 8;
+            if (d.group) {
+                const dx = sx - d.start.x, dy = sy - d.start.y;
+                d.group.forEach((start, gid) => moveNode(gid, start.x + dx, start.y + dy));
+            } else {
+                moveNode(d.nodeId, sx, sy);
+            }
             d.moved = true;
         }
         return;
@@ -610,9 +622,20 @@ function onTouchEnd(e) {
         for (const t of e.changedTouches) {
             const d = touchDrags.get(t.identifier);
             if (!d) continue;
-            if (d.moved) { const node = state.nodes.get(d.nodeId); if (node) saveNodePosition(d.nodeId, node.data.position, d.start); }
+            if (d.moved) {
+                const ids = d.group ? [...d.group.keys()] : [d.nodeId];
+                const folderId = findFolderUnder(d.nodeId, ids);
+                if (folderId) {
+                    ids.forEach(nid => { const n = state.nodes.get(nid); if (n && n.data.type !== 'folder') fileNodeIntoFolder(nid, folderId); });
+                } else if (d.group) {
+                    d.group.forEach((start, gid) => { const n = state.nodes.get(gid); if (n) saveNodePosition(gid, n.data.position, start); });
+                } else {
+                    const node = state.nodes.get(d.nodeId); if (node) saveNodePosition(d.nodeId, node.data.position, d.start);
+                }
+            }
             touchDrags.delete(t.identifier);
         }
+        document.querySelectorAll('.space-node.folder-drop').forEach(el => el.classList.remove('folder-drop'));
         if (touchDrags.size === 0) { lastTouchDist = null; lastTouchMid = null; }
         return;
     }
@@ -1987,7 +2010,23 @@ function setPenWidth(w) {
 function togglePalette(e) {
     if (e) e.stopPropagation();
     const pop = $('palette-pop');
-    if (pop) pop.classList.toggle('show');
+    if (!pop) return;
+    const showing = pop.classList.toggle('show');
+    if (showing) positionPalette();
+}
+// Place the palette next to the toolbar button (right on desktop, above the bar on mobile)
+function positionPalette() {
+    const pop = $('palette-pop'), btn = $('tool-palette');
+    if (!pop || !btn) return;
+    const r = btn.getBoundingClientRect();
+    if (window.innerWidth <= 768) {
+        pop.style.left = '50%'; pop.style.transform = 'translateX(-50%)';
+        pop.style.right = 'auto'; pop.style.top = 'auto'; pop.style.bottom = '74px';
+    } else {
+        pop.style.transform = 'none'; pop.style.right = 'auto'; pop.style.bottom = 'auto';
+        pop.style.left = (r.right + 12) + 'px';
+        pop.style.top  = Math.max(52, r.top) + 'px';
+    }
 }
 // Helper: normalise "rgb(a)" → hex for active-swatch matching
 function rgbToHex(rgb) {
