@@ -11,6 +11,8 @@ const API_BASE       = '/api/space';
 // The client just POSTs the prompt and renders the realtime results over WS.
 
 const CURSOR_COLORS  = ['#4ade80','#60a5fa','#c084fc','#fb923c','#f472b6','#34d399','#fbbf24','#f87171'];
+// Is THIS device touch-based? Broadcast so others render our cursor as a dot (mobile) vs arrow (desktop)
+const IS_TOUCH = (navigator.maxTouchPoints > 0) || ('ontouchstart' in window) || window.matchMedia('(pointer: coarse)').matches;
 const CURSOR_THROTTLE_MS = 30;  // 30ms default, 100ms on slow network
 
 // ─── STATE ───────────────────────────────────────────
@@ -28,6 +30,7 @@ let state = {
     nodes:           new Map(),   // id → { el, data }
     edges:           new Map(),   // id → { el: g, path, hitPath, data }
     strokes:         new Map(),   // id → { el: path, data }  (freehand drawings)
+    filed:           new Map(),   // id → data  (nodes filed inside a folder, not on canvas)
     selected:        new Set(),
 
     // drawing (pen / eraser)
@@ -437,7 +440,35 @@ function applyViewport() {
     canvasArea.style.setProperty('--grid-dot', `rgba(var(--grid-dot-rgb),${dotOpacity})`);
     zoomDisplay.textContent = Math.round(zoom * 100) + '%';
     updateAllCursorPositions();  // reproject cursors on viewport change
+    reprojectChat();             // keep the on-canvas chat anchored to the board
+    scheduleCull();              // hide off-screen nodes on big canvases (perf)
     updateMinimap();
+}
+
+// ── Node culling: on large canvases, hide nodes far outside the viewport ──
+const CULL_THRESHOLD = 60;   // only cull when there are many nodes
+let cullScheduled = false;
+function scheduleCull() {
+    if (cullScheduled) return;
+    cullScheduled = true;
+    requestAnimationFrame(() => { cullScheduled = false; cullNodes(); });
+}
+function cullNodes() {
+    if (state.nodes.size <= CULL_THRESHOLD) {
+        state.nodes.forEach(n => { if (n.el.style.display === 'none') n.el.style.display = ''; });
+        return;
+    }
+    const rect = canvasArea.getBoundingClientRect();
+    const tl = screenToWorld(0, 0);
+    const br = screenToWorld(rect.width, rect.height);
+    const m  = 400 / (state.viewport.zoom || 1);
+    const minX = tl.x - m, minY = tl.y - m, maxX = br.x + m, maxY = br.y + m;
+    state.nodes.forEach((node, id) => {
+        if (state.selected.has(id) || state.dragNode === id) { node.el.style.display = ''; return; }
+        const d = node.data, w = d.size?.w || 200, h = d.size?.h || 120;
+        const visible = d.position.x < maxX && d.position.x + w > minX && d.position.y < maxY && d.position.y + h > minY;
+        node.el.style.display = visible ? '' : 'none';
+    });
 }
 
 function screenToWorld(sx, sy) {
@@ -498,21 +529,66 @@ window.addEventListener('mouseup', onCanvasMouseup);
 
 // Touch
 let lastTouchDist = null, lastTouchMid = null;
+const touchDrags = new Map(); // touch.identifier → { nodeId, offX, offY, moved, start }
 canvasArea.addEventListener('touchstart', onTouchStart, { passive: false });
 canvasArea.addEventListener('touchmove',  onTouchMove,  { passive: false });
 canvasArea.addEventListener('touchend',   onTouchEnd);
 
+// Which node (if any) is under a touch point
+function nodeIdAtPoint(clientX, clientY) {
+    let el = document.elementFromPoint(clientX, clientY);
+    el = el && el.closest ? el.closest('.space-node') : null;
+    return el ? el.dataset.id : null;
+}
+
 function onTouchStart(e) {
+    // Multi-touch node dragging (tablets): each finger on a note drags it (up to 3)
+    if (state.currentTool === 'select' && !state.readOnly) {
+        const rect = canvasArea.getBoundingClientRect();
+        let started = false;
+        for (const t of e.changedTouches) {
+            if (touchDrags.size >= 3) break;
+            // Don't start a drag on editable text / buttons / handles / media — let those tap normally
+            const target = document.elementFromPoint(t.clientX, t.clientY);
+            if (target && target.closest('[contenteditable="true"], .node-action-btn, a, .node-port, .node-resize, audio, video, .file-media-preview, .file-audio-preview')) continue;
+            const id = nodeIdAtPoint(t.clientX, t.clientY);
+            if (!id || [...touchDrags.values()].some(d => d.nodeId === id)) continue;
+            const node = state.nodes.get(id);
+            if (!node) continue;
+            selectNode(id);
+            const left = parseInt(node.el.style.left) || 0, top = parseInt(node.el.style.top) || 0;
+            touchDrags.set(t.identifier, {
+                nodeId: id,
+                offX: (t.clientX - rect.left) - (left * state.viewport.zoom + state.viewport.x),
+                offY: (t.clientY - rect.top)  - (top  * state.viewport.zoom + state.viewport.y),
+                moved: false, start: { x: left, y: top }
+            });
+            started = true;
+        }
+        if (started || touchDrags.size) { e.preventDefault(); return; }
+    }
     if (e.touches.length === 2) {
         lastTouchDist = getTouchDist(e.touches);
         lastTouchMid  = getTouchMid(e.touches, canvasArea.getBoundingClientRect());
     } else if (e.touches.length === 1) {
-        const t = e.touches[0], rect = canvasArea.getBoundingClientRect();
+        const t = e.touches[0];
         onCanvasMousedown({ clientX: t.clientX, clientY: t.clientY, target: t.target, button: 0, preventDefault: () => e.preventDefault() });
     }
 }
 function onTouchMove(e) {
     e.preventDefault();
+    // Drive any active per-finger node drags
+    if (touchDrags.size) {
+        const rect = canvasArea.getBoundingClientRect();
+        for (const t of e.changedTouches) {
+            const d = touchDrags.get(t.identifier);
+            if (!d) continue;
+            const w = screenToWorld((t.clientX - rect.left) - d.offX, (t.clientY - rect.top) - d.offY);
+            moveNode(d.nodeId, Math.round(w.x / 8) * 8, Math.round(w.y / 8) * 8);
+            d.moved = true;
+        }
+        return;
+    }
     if (e.touches.length === 2) {
         const dist = getTouchDist(e.touches);
         const mid  = getTouchMid(e.touches, canvasArea.getBoundingClientRect());
@@ -528,7 +604,20 @@ function onTouchMove(e) {
         onCanvasMousemove({ clientX: t.clientX, clientY: t.clientY });
     }
 }
-function onTouchEnd() { lastTouchDist = null; lastTouchMid = null; onCanvasMouseup({}); }
+function onTouchEnd(e) {
+    // Finish any per-finger node drags → persist their new positions
+    if (touchDrags.size && e && e.changedTouches) {
+        for (const t of e.changedTouches) {
+            const d = touchDrags.get(t.identifier);
+            if (!d) continue;
+            if (d.moved) { const node = state.nodes.get(d.nodeId); if (node) saveNodePosition(d.nodeId, node.data.position, d.start); }
+            touchDrags.delete(t.identifier);
+        }
+        if (touchDrags.size === 0) { lastTouchDist = null; lastTouchMid = null; }
+        return;
+    }
+    lastTouchDist = null; lastTouchMid = null; onCanvasMouseup({});
+}
 function getTouchDist(t) { const dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.sqrt(dx*dx+dy*dy); }
 function getTouchMid(t, r) { return { x:(t[0].clientX+t[1].clientX)/2-r.left, y:(t[0].clientY+t[1].clientY)/2-r.top }; }
 
@@ -613,8 +702,19 @@ function onCanvasMousemove(e) {
     if (state.dragNode) {
         const w = screenToWorld(sx - state.dragOffset.x, sy - state.dragOffset.y);
         const snapped = { x: Math.round(w.x / 8) * 8, y: Math.round(w.y / 8) * 8 };
-        moveNode(state.dragNode, snapped.x, snapped.y);
+        if (state.dragGroup) {
+            // Move the whole selection by the same delta
+            const dx = snapped.x - state.dragStartPos.x, dy = snapped.y - state.dragStartPos.y;
+            state.dragGroup.forEach((start, gid) => moveNode(gid, start.x + dx, start.y + dy));
+        } else {
+            moveNode(state.dragNode, snapped.x, snapped.y);
+        }
         state.dragMoved = true;
+        // Highlight a folder we're hovering over (drop target)
+        const draggedIds = state.dragGroup ? [...state.dragGroup.keys()] : [state.dragNode];
+        const overFolder = findFolderUnder(state.dragNode, draggedIds);
+        document.querySelectorAll('.space-node.folder-drop').forEach(el => { if (el.dataset.id !== overFolder) el.classList.remove('folder-drop'); });
+        if (overFolder) { const f = state.nodes.get(overFolder); if (f) f.el.classList.add('folder-drop'); }
         return;
     }
     if (state.selectBoxStart) {
@@ -653,9 +753,20 @@ function onCanvasMouseup(e) {
     state.isPanning = false;
     state.panStart  = null;
     if (state.dragNode && state.dragMoved) {
-        const node = state.nodes.get(state.dragNode);
-        if (node) saveNodePosition(state.dragNode, node.data.position, state.dragStartPos);
+        const draggedIds = state.dragGroup ? [...state.dragGroup.keys()] : [state.dragNode];
+        // Did we drop onto a folder? If so, file the dragged (non-folder) nodes.
+        const folderId = findFolderUnder(state.dragNode, draggedIds);
+        if (folderId) {
+            draggedIds.forEach(nid => { const n = state.nodes.get(nid); if (n && n.data.type !== 'folder') fileNodeIntoFolder(nid, folderId); });
+        } else if (state.dragGroup) {
+            state.dragGroup.forEach((start, gid) => { const n = state.nodes.get(gid); if (n) saveNodePosition(gid, n.data.position, start); });
+        } else {
+            const node = state.nodes.get(state.dragNode);
+            if (node) saveNodePosition(state.dragNode, node.data.position, state.dragStartPos);
+        }
     }
+    document.querySelectorAll('.space-node.folder-drop').forEach(el => el.classList.remove('folder-drop'));
+    state.dragGroup  = null;
     state.dragNode   = null;
     state.dragOffset = null;
     state.dragMoved  = false;
@@ -718,9 +829,17 @@ function createNodeElement(data, animate = false) {
     const id = data._id;
     if (state.nodes.has(id)) return;
 
+    // Filed inside a folder → keep the data only, don't render on the canvas
+    if (data.parentId) {
+        state.filed.set(id, { ...data });
+        updateFolderCount(String(data.parentId));
+        return;
+    }
+
     const el = document.createElement('div');
     el.className = 'space-node'
         + (data.type === 'ai-generated' ? ' ai-node' : '')
+        + (data.type === 'folder' ? ' folder-node' : '')
         + (data.color ? ` color-${data.color}` : '');
     el.dataset.id = id;
     el.style.cssText = `left:${data.position.x}px;top:${data.position.y}px;` +
@@ -730,7 +849,9 @@ function createNodeElement(data, animate = false) {
         ? new Date(data.metadata.createdAt).toLocaleDateString('ru-RU')
         : new Date().toLocaleDateString('ru-RU');
 
-    el.innerHTML = data.type === 'file'
+    el.innerHTML = data.type === 'folder'
+        ? buildFolderNodeHTML(data, createdAt)
+        : data.type === 'file'
         ? buildFileNodeHTML(data, createdAt)
         : buildNoteNodeHTML(data, createdAt);
 
@@ -744,10 +865,11 @@ function createNodeElement(data, animate = false) {
         el.appendChild(port);
     });
 
-    // Resize handle
+    // Resize handle (mouse + touch)
     const rh = document.createElement('div');
     rh.className = 'node-resize';
     rh.addEventListener('mousedown', onResizeMousedown);
+    rh.addEventListener('touchstart', onResizeMousedown, { passive: false });
     el.appendChild(rh);
 
     el.addEventListener('mousedown', onNodeMousedown);
@@ -805,7 +927,7 @@ function buildNoteNodeHTML(data, createdAt) {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                 </button>
                 <button class="node-action-btn danger" onclick="deleteNode('${data._id}')" title="Delete">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M19 6l-1 14H6L5 6"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                 </button>
             </div>
         </div>
@@ -840,25 +962,169 @@ function buildFileNodeHTML(data, createdAt) {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                 </button>
                 <button class="node-action-btn danger" onclick="deleteNode('${data._id}')" title="Delete">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M19 6l-1 14H6L5 6"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                 </button>
             </div>
         </div>
     </div>`;
 }
 
-// SVG path markup for each file-type category (drawn inside the type badge)
+// ── Folders ──
+const FOLDER_ICON = '<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>';
+
+function buildFolderNodeHTML(data, createdAt) {
+    const count = folderChildCount(data._id);
+    return `<div class="node-card">
+        <div class="node-header">
+            <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${FOLDER_ICON}</svg>
+            <div class="node-title" contenteditable="true" spellcheck="false"
+                 data-node-id="${data._id}"
+                 onblur="onNodeTitleBlur(this)"
+                 onclick="event.stopPropagation()"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}">${escHtml(data.title||'Folder')}</div>
+            <div class="node-type-badge">FOLDER</div>
+        </div>
+        <div class="folder-body" onclick="openFolder('${data._id}')" onmousedown="event.stopPropagation()">
+            <div class="folder-icon-big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${FOLDER_ICON}</svg></div>
+            <div class="folder-count" data-folder-count="${data._id}">${count} item${count===1?'':'s'}</div>
+            <button class="folder-open-btn">Open</button>
+        </div>
+        <div class="node-footer">
+            <div class="node-date">${createdAt}</div>
+            <div class="node-actions">
+                <button class="node-action-btn danger" onclick="deleteNode('${data._id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>`;
+}
+
+function createFolder() {
+    if (state.readOnly) { showToast('Read-only — viewing mode', 'error'); return; }
+    const c = getCenterViewport();
+    saveAndCreateNode({
+        type: 'folder', title: 'Folder', content: '',
+        position: { x: c.x - 90, y: c.y - 70 }, size: { w: 190, h: 170 }, color: '',
+        spaceId: state.spaceId,
+        metadata: { createdBy: state.user?._id, createdAt: new Date().toISOString() }
+    });
+}
+
+// How many nodes are filed inside a given folder
+function folderChildCount(folderId) {
+    let n = 0;
+    state.filed.forEach(d => { if (String(d.parentId) === String(folderId)) n++; });
+    return n;
+}
+function updateFolderCount(folderId) {
+    const el = document.querySelector(`[data-folder-count="${folderId}"]`);
+    if (el) { const c = folderChildCount(folderId); el.textContent = `${c} item${c === 1 ? '' : 's'}`; }
+}
+
+// Find a folder node whose rect contains the dropped node's centre (for filing)
+function findFolderUnder(nodeId, excludeIds) {
+    const dragged = state.nodes.get(nodeId);
+    if (!dragged) return null;
+    const cx = dragged.data.position.x + (dragged.data.size?.w || 200) / 2;
+    const cy = dragged.data.position.y + (dragged.data.size?.h || 120) / 2;
+    for (const [fid, f] of state.nodes) {
+        if (f.data.type !== 'folder' || excludeIds.includes(fid)) continue;
+        const x = f.data.position.x, y = f.data.position.y, w = f.data.size?.w || 190, h = f.data.size?.h || 170;
+        if (cx >= x && cx <= x + w && cy >= y && cy <= y + h) return fid;
+    }
+    return null;
+}
+
+// File a node into a folder (removes it from the canvas, syncs to everyone)
+async function fileNodeIntoFolder(nodeId, folderId) {
+    const node = state.nodes.get(nodeId);
+    if (!node || node.data.type === 'folder') return;
+    node.data.parentId = folderId;
+    // remove connected edges from view (they don't apply while filed)
+    state.edges.forEach((e, eid) => {
+        if (e.data.sourceNodeId === nodeId || e.data.targetNodeId === nodeId) { e.el.remove(); state.edges.delete(eid); physics.edges.delete(eid); }
+    });
+    node.el.remove();
+    state.nodes.delete(nodeId);
+    state.filed.set(nodeId, { ...node.data });
+    updateFolderCount(folderId);
+    showToast('Filed into folder', 'success');
+    try {
+        await apiFetch(`${API_BASE}/spaces/${state.spaceId}/nodes/${nodeId}`, 'PATCH', { parentId: folderId });
+        if (ws) ws.emit('node:update', { spaceId: state.spaceId, nodeId, updates: { parentId: folderId }, userId: state.user?._id });
+    } catch { queueNodeEdit(nodeId, { parentId: folderId }); }
+}
+
+// Take a node back out of its folder onto the canvas
+async function ejectNode(nodeId) {
+    const data = state.filed.get(nodeId);
+    if (!data) return;
+    const folderId = data.parentId;
+    const folder = state.nodes.get(String(folderId));
+    const pos = folder
+        ? { x: folder.data.position.x + (folder.data.size?.w || 190) + 30, y: folder.data.position.y }
+        : (data.position || { x: 100, y: 100 });
+    data.parentId = null; data.position = pos;
+    state.filed.delete(nodeId);
+    createNodeElement({ ...data, parentId: null }, true);
+    updateFolderCount(folderId);
+    if (folder) updateFolderCount(folderId);
+    renderFolderContents(folderId);
+    try {
+        await apiFetch(`${API_BASE}/spaces/${state.spaceId}/nodes/${nodeId}`, 'PATCH', { parentId: null, position: pos });
+        if (ws) ws.emit('node:update', { spaceId: state.spaceId, nodeId, updates: { parentId: null, position: pos }, userId: state.user?._id });
+    } catch { queueNodeEdit(nodeId, { parentId: null, position: pos }); }
+}
+
+let openFolderId = null;
+function openFolder(folderId) {
+    openFolderId = folderId;
+    const folder = state.nodes.get(folderId);
+    $('folder-modal-name').textContent = (folder?.data.title || 'Folder');
+    $('folder-modal').classList.add('show');
+    renderFolderContents(folderId);
+}
+function renderFolderContents(folderId) {
+    if (openFolderId !== folderId) return;
+    const listEl = $('folder-list');
+    const items = [];
+    state.filed.forEach((d, id) => { if (String(d.parentId) === String(folderId)) items.push({ id, d }); });
+    if (!items.length) { listEl.innerHTML = '<div class="trash-empty">// empty — drag files onto the folder to fill it</div>'; return; }
+    listEl.innerHTML = '';
+    items.forEach(({ id, d }) => {
+        const kind = d.type === 'file' ? (d.fileRef?.ext || 'file').toUpperCase() : (d.type === 'ai-generated' ? 'AI' : 'NOTE');
+        const row = document.createElement('div');
+        row.className = 'trash-row';
+        const dl = d.type === 'file'
+            ? `<a class="folder-eject-btn" href="/api/space/nodes/${id}/download?token=${encodeURIComponent(state.token || '')}" title="Download">↓</a>` : '';
+        row.innerHTML = `
+            <div class="trash-info">
+                <span class="trash-kind">${escHtml(kind)}</span>
+                <span class="trash-title">${escHtml(d.title || d.fileRef?.name || '(untitled)')}</span>
+            </div>
+            <div class="trash-actions">
+                ${dl}
+                ${state.readOnly ? '' : '<button class="folder-eject-btn">Eject</button>'}
+            </div>`;
+        const eject = row.querySelector('.folder-eject-btn:not(a)') || (state.readOnly ? null : row.querySelector('.trash-actions button'));
+        if (eject && eject.textContent === 'Eject') eject.onclick = () => ejectNode(id);
+        listEl.appendChild(row);
+    });
+}
+
+// SVG path markup for each file-type category (clean Lucide-style, 24×24, stroke)
 const FILE_ICON_PATHS = {
-    doc:     '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>',
-    table:   '<rect x="3" y="3" width="18" height="18"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>',
-    ppt:     '<rect x="3" y="4" width="18" height="12"/><line x1="12" y1="16" x2="12" y2="20"/><line x1="8" y1="20" x2="16" y2="20"/>',
-    pdf:     '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><text x="7.5" y="18" font-size="6" fill="currentColor" stroke="none">PDF</text>',
-    archive: '<rect x="3" y="3" width="18" height="18"/><path d="M12 3v18"/><path d="M9 7h6M9 11h6M9 15h6"/>',
+    doc:     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
+    table:   '<rect x="3" y="3" width="18" height="18"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>',
+    ppt:     '<path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-4 5 4"/>',
+    pdf:     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    archive: '<rect x="2" y="4" width="20" height="5"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
     code:    '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
     audio:   '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
-    video:   '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14"/>',
-    image:   '<rect x="3" y="3" width="18" height="18"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
-    file:    '<path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/>'
+    video:   '<path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+    image:   '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+    file:    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>'
 };
 
 // Resolve a file extension → { cat, color }
@@ -967,6 +1233,12 @@ function onNodeMousedown(e) {
     };
     state.dragStartPos = { ...state.nodes.get(id).data.position };
     state.dragMoved = false;
+    // If several nodes are selected, drag them together (record their start positions)
+    state.dragGroup = null;
+    if (state.selected.size > 1 && state.selected.has(id)) {
+        state.dragGroup = new Map();
+        state.selected.forEach(sid => { const sn = state.nodes.get(sid); if (sn) state.dragGroup.set(sid, { ...sn.data.position }); });
+    }
     const maxZ = Math.max(1, ...Array.from(state.nodes.values()).map(n => parseInt(n.el.style.zIndex)||1));
     el.style.zIndex = maxZ + 1;
     state.nodes.get(id).data.zIndex = maxZ + 1;
@@ -990,6 +1262,10 @@ async function deleteNode(id) {
     if (state.readOnly) { showToast('Read-only — viewing mode', 'error'); return; }
     const node = state.nodes.get(id);
     if (!node) return;
+    // Deleting a folder → eject its contents back onto the canvas first
+    if (node.data.type === 'folder') {
+        [...state.filed.entries()].forEach(([cid, d]) => { if (String(d.parentId) === String(id)) ejectNode(cid); });
+    }
     pushUndo({ type: 'delete-node', nodeId: id, data: { ...node.data } });
     node.el.style.transition = 'opacity 0.15s, transform 0.15s';
     node.el.style.opacity = '0';
@@ -1014,17 +1290,31 @@ async function deleteNode(id) {
     } finally { hideUpdating(); }
 }
 
+// Offline edit queue — changes are kept locally and replayed on reconnect,
+// so a failed/slow request never throws away what the user typed.
+const pendingNodeEdits = new Map();  // nodeId → merged updates awaiting sync
+function queueNodeEdit(id, updates) {
+    pendingNodeEdits.set(id, Object.assign(pendingNodeEdits.get(id) || {}, updates));
+}
+async function flushPendingEdits() {
+    if (!pendingNodeEdits.size || !state.spaceId) return;
+    for (const [id, updates] of [...pendingNodeEdits.entries()]) {
+        try {
+            await apiFetch(`${API_BASE}/spaces/${state.spaceId}/nodes/${id}`, 'PATCH', updates);
+            if (ws) ws.emit('node:update', { spaceId: state.spaceId, nodeId: id, updates, userId: state.user?._id });
+            pendingNodeEdits.delete(id);
+        } catch { break; } // still offline → keep the rest queued
+    }
+}
+
 async function saveNodePosition(id, position, prevPosition) {
     if (state.readOnly) return;
     showUpdating();
     try {
         await apiFetch(`${API_BASE}/spaces/${state.spaceId}/nodes/${id}`, 'PATCH', { position });
     } catch {
-        // Offline — snap the node back to where it was before the drag
-        if (prevPosition) {
-            moveNode(id, prevPosition.x, prevPosition.y);
-            showToast('No connection — move reverted', 'error');
-        }
+        // Keep the local position and queue it — it will sync on reconnect
+        queueNodeEdit(id, { position });
     } finally { hideUpdating(); }
 }
 
@@ -1032,19 +1322,14 @@ async function saveNodeData(id, updates) {
     if (state.readOnly) return;
     const node = state.nodes.get(id);
     if (!node) return;
-    // Snapshot previous values so we can revert on connection failure
-    const prev = {};
-    Object.keys(updates).forEach(k => { prev[k] = node.data[k]; });
-    Object.assign(node.data, updates);
+    Object.assign(node.data, updates);  // optimistic local update (kept even if offline)
     showUpdating();
     try {
         await apiFetch(`${API_BASE}/spaces/${state.spaceId}/nodes/${id}`, 'PATCH', updates);
         if (ws) ws.emit('node:update', { spaceId: state.spaceId, nodeId: id, updates, userId: state.user?._id });
     } catch {
-        // Offline / failed → revert data + DOM to the previous (server) state
-        Object.assign(node.data, prev);
-        Object.keys(prev).forEach(k => renderNodeField(node, k, prev[k]));
-        showToast('No connection — change reverted', 'error');
+        // Do NOT revert (that lost the user's text). Keep it locally and queue for retry.
+        queueNodeEdit(id, updates);
     } finally { hideUpdating(); }
 }
 
@@ -1120,24 +1405,29 @@ function onNodeContentInput(el) {
 
 function stopPropIfEditing(e) { e.stopPropagation(); }
 
+// Works for both mouse and touch (tablets can resize via the corner handle)
 function onResizeMousedown(e) {
     if (state.readOnly) return;
     e.stopPropagation();
+    if (e.cancelable) e.preventDefault();
+    const pt = (ev) => (ev.touches && ev.touches[0]) ? ev.touches[0] : (ev.changedTouches && ev.changedTouches[0]) ? ev.changedTouches[0] : ev;
+    const s = pt(e);
     const nodeEl = e.currentTarget.parentElement;
     const id     = nodeEl.dataset.id;
-    const startX = e.clientX, startY = e.clientY;
+    const startX = s.clientX, startY = s.clientY;
     const startW = parseInt(nodeEl.style.width), startH = parseInt(nodeEl.style.height);
     let lastEmit = 0;
     function onMove(ev) {
+        const p  = pt(ev);
         const z  = state.viewport.zoom;
-        const w  = Math.max(160, startW + (ev.clientX - startX) / z);
-        const h  = Math.max(80,  startH + (ev.clientY - startY) / z);
+        const w  = Math.max(160, startW + (p.clientX - startX) / z);
+        const h  = Math.max(80,  startH + (p.clientY - startY) / z);
         nodeEl.style.width  = w + 'px';
         nodeEl.style.height = h + 'px';
         const node = state.nodes.get(id);
         if (node) node.data.size = { w, h };
         updateEdgesForNode(id);
-        // Live broadcast (throttled) so collaborators see the resize in real-time
+        if (ev.cancelable) ev.preventDefault();
         const now = Date.now();
         if (ws && now - lastEmit > 60) {
             lastEmit = now;
@@ -1147,11 +1437,15 @@ function onResizeMousedown(e) {
     function onUp() {
         window.removeEventListener('mousemove', onMove);
         window.removeEventListener('mouseup',  onUp);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('touchend',  onUp);
         const node = state.nodes.get(id);
         if (node) saveNodeData(id, { size: node.data.size });
     }
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup',   onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend',  onUp);
 }
 
 // ══════════════════════════════════════════════════════
@@ -1944,6 +2238,7 @@ function initWebSocket() {
         wsStatus.textContent = 'live';
         wsDot.style.background = 'var(--green)';
         if (state.spaceId) ws.emit('space:join', { spaceId: state.spaceId, userId: state.user?._id, username: state.user?.username, color: state.user?.color });
+        flushPendingEdits();  // replay edits queued while disconnected
     });
     ws.on('disconnect', () => { wsStatus.textContent = 'reconnecting…'; wsDot.style.background = 'var(--yellow)'; });
     ws.on('connect_error', () => { wsStatus.textContent = 'offline'; wsDot.style.background = 'var(--red)'; });
@@ -1956,18 +2251,17 @@ function initWebSocket() {
         if (strokes) strokes.forEach(s => { if (!state.strokes.has(s._id)) createStrokeElement(s); });
         renderChatHistory(chat);
         applyChatMode(chatMode || 'panel', chatPos);
+        scheduleCull();
         updateCanvasHint();
         updateMinimap();
-        if (onlineCount !== undefined) $('online-num').textContent = onlineCount;
-        if (users) users.forEach(u => state.onlineUsers.set(u.userId, u));
+        if (users) { state.onlineUsers.clear(); users.filter(u => u.userId !== state.user?._id).forEach(u => state.onlineUsers.set(u.userId, u)); }
         updateOnlineTooltip();
         renderAIHistory(aiHistory);
         setTimeout(loadTextPreviews, 400);
     });
 
     ws.on('space:online', ({ count, users }) => {
-        $('online-num').textContent = count;
-        if (users) { state.onlineUsers.clear(); users.forEach(u => state.onlineUsers.set(u.userId, u)); }
+        if (users) { state.onlineUsers.clear(); users.filter(u => u.userId !== state.user?._id).forEach(u => state.onlineUsers.set(u.userId, u)); }
         updateOnlineTooltip();
     });
 
@@ -1984,8 +2278,36 @@ function initWebSocket() {
     });
     ws.on('node:update', ({ nodeId, updates, userId }) => {
         if (userId === state.user?._id) return;
+        if (!updates) return;
+        // Folder filing / ejecting (node moves between canvas and a folder)
+        if (updates.parentId !== undefined) {
+            if (updates.parentId) {
+                const n = state.nodes.get(nodeId);
+                if (n) {
+                    state.edges.forEach((e, eid) => { if (e.data.sourceNodeId === nodeId || e.data.targetNodeId === nodeId) { e.el.remove(); state.edges.delete(eid); physics.edges.delete(eid); } });
+                    const data = { ...n.data, parentId: updates.parentId };
+                    n.el.remove(); state.nodes.delete(nodeId);
+                    state.filed.set(nodeId, data);
+                } else if (state.filed.has(nodeId)) {
+                    state.filed.get(nodeId).parentId = updates.parentId;
+                }
+                updateFolderCount(String(updates.parentId));
+            } else {
+                const data = state.filed.get(nodeId);
+                if (data) {
+                    const oldFolder = data.parentId;
+                    state.filed.delete(nodeId);
+                    data.parentId = null;
+                    if (updates.position) data.position = updates.position;
+                    createNodeElement({ ...data, parentId: null }, true);
+                    updateFolderCount(String(oldFolder));
+                }
+            }
+            if (openFolderId) renderFolderContents(openFolderId);
+            return;
+        }
         const n = state.nodes.get(nodeId);
-        if (!n || !updates) return;
+        if (!n) return;
         Object.assign(n.data, updates);
         if (updates.content !== undefined) {
             const b = n.el.querySelector('.node-body');
@@ -2041,9 +2363,9 @@ function initWebSocket() {
     });
 
     // Cursor events (Stage 2)
-    ws.on('cursor:move', ({ userId, username, color, x, y }) => {
+    ws.on('cursor:move', ({ userId, username, color, x, y, touch }) => {
         if (userId === state.user?._id) return;
-        updateRemoteCursor(userId, username, color, x, y);
+        updateRemoteCursor(userId, username, color, x, y, touch);
     });
 
     // Remote editing indicator (Stage 2)
@@ -2180,24 +2502,47 @@ function toggleTeamChat() {
 }
 
 // Apply the (shared) placement mode + position. Called locally + on chat:mode.
+// In 'canvas' mode chatPos is WORLD coords (chat is anchored to the board and
+// pans/zooms with it). In 'floating' mode chatPos is screen coords.
 function applyChatMode(mode, pos) {
     state.chatMode = mode || 'panel';
-    if (pos && typeof pos.x === 'number') state.chatPos = pos;
+    if (pos && typeof pos.x === 'number') state.chatPos = { x: pos.x, y: pos.y };
     teamChat.classList.remove('mode-panel', 'mode-floating', 'mode-canvas');
     teamChat.classList.add(`mode-${state.chatMode}`);
     document.querySelectorAll('.tc-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === state.chatMode));
     if (state.chatMode === 'panel') {
+        // drop any inline size/pos from a previous floating/canvas resize so CSS wins
         teamChat.style.left = ''; teamChat.style.top = '';
-    } else {
+        teamChat.style.width = ''; teamChat.style.height = '';
+    } else if (state.chatMode === 'floating') {
         teamChat.style.left = state.chatPos.x + 'px';
         teamChat.style.top  = state.chatPos.y + 'px';
+    } else { // canvas — position from world coords
+        reprojectChat();
     }
+}
+
+// Re-place the on-canvas chat from its world position (called on pan/zoom)
+function reprojectChat() {
+    if (state.chatMode !== 'canvas' || !state.teamChatOpen) return;
+    const rect = canvasArea.getBoundingClientRect();
+    const s = worldToScreen(state.chatPos.x, state.chatPos.y);
+    teamChat.style.left = (rect.left + s.x) + 'px';
+    teamChat.style.top  = (rect.top + s.y) + 'px';
 }
 
 // User picked a mode → broadcast to everyone (server persists it)
 function setChatMode(mode) {
-    if (ws && state.spaceId) ws.emit('chat:mode', { spaceId: state.spaceId, mode, pos: state.chatPos });
-    applyChatMode(mode, state.chatPos); // optimistic
+    const rect = canvasArea.getBoundingClientRect();
+    let pos = state.chatPos;
+    if (mode === 'canvas') {
+        const w = screenToWorld(rect.width / 2 - 165, rect.height / 2 - 200);
+        pos = { x: Math.round(w.x), y: Math.round(w.y) };
+    } else if (mode === 'floating') {
+        pos = { x: Math.round(rect.left + rect.width / 2 - 180), y: 110 };
+    }
+    if (ws && state.spaceId) ws.emit('chat:mode', { spaceId: state.spaceId, mode, pos });
+    applyChatMode(mode, pos); // optimistic
 }
 
 function renderTeamPresence() {
@@ -2334,15 +2679,72 @@ function renderChatTyping() {
         if (!dragging) return;
         const x = Math.max(0, Math.min(window.innerWidth - 80, e.clientX - ox));
         const y = Math.max(44, Math.min(window.innerHeight - 60, e.clientY - oy));
-        state.chatPos = { x, y };
         teamChat.style.left = x + 'px'; teamChat.style.top = y + 'px';
+        if (state.chatMode === 'canvas') {
+            // store as world coords so it stays anchored to the board
+            const rect = canvasArea.getBoundingClientRect();
+            const w = screenToWorld(x - rect.left, y - rect.top);
+            state.chatPos = { x: Math.round(w.x), y: Math.round(w.y) };
+        } else {
+            state.chatPos = { x, y };
+        }
     });
     window.addEventListener('mouseup', () => {
         if (!dragging) return;
         dragging = false;
         if (ws && state.spaceId) ws.emit('chat:mode', { spaceId: state.spaceId, mode: state.chatMode, pos: state.chatPos });
     });
+
+    // Resize (floating / canvas) with sensible bounds
+    const handle = $('tc-resize');
+    if (handle) {
+        let rz = false, sw = 0, sh = 0, sx = 0, sy = 0;
+        handle.addEventListener('mousedown', (e) => {
+            if (state.chatMode === 'panel') return;
+            rz = true; const r = teamChat.getBoundingClientRect();
+            sw = r.width; sh = r.height; sx = e.clientX; sy = e.clientY;
+            e.preventDefault(); e.stopPropagation();
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!rz) return;
+            const w = Math.max(280, Math.min(560, sw + (e.clientX - sx)));
+            const h = Math.max(320, Math.min(720, sh + (e.clientY - sy)));
+            teamChat.style.width = w + 'px'; teamChat.style.height = h + 'px';
+        });
+        window.addEventListener('mouseup', () => { rz = false; });
+    }
 })();
+
+// ── Paste (Ctrl+V) onto the canvas: image → upload, text → new note ──
+document.addEventListener('paste', (e) => {
+    if (!app.classList.contains('show') || state.readOnly) return;
+    const ae = document.activeElement;
+    // let normal paste happen inside editable fields (notes, chat, inputs)
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+    const cd = e.clipboardData;
+    if (!cd) return;
+    // Image?
+    for (const it of cd.items || []) {
+        if (it.type && it.type.startsWith('image/')) {
+            const blob = it.getAsFile();
+            if (blob) {
+                e.preventDefault();
+                const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                const file = new File([blob], `pasted-${Date.now()}.${ext}`, { type: blob.type });
+                const c = getCenterViewport();
+                uploadFileToR2(file, c.x - 95, c.y - 80);
+                return;
+            }
+        }
+    }
+    // Text?
+    const text = cd.getData('text/plain');
+    if (text && text.trim()) {
+        e.preventDefault();
+        const c = getCenterViewport();
+        createNoteAtPos(c.x - 100, c.y - 60, { title: 'Pasted', content: text.trim().slice(0, 5000), w: 220, h: 150 });
+    }
+});
 
 // ── Cursor rendering (Stage 2) — in canvas-area screen space ──
 function emitCursor(sx, sy) {
@@ -2355,20 +2757,20 @@ function emitCursor(sx, sy) {
         x: world.x, y: world.y,
         userId: state.user._id,
         username: state.user.username,
-        color: state.user.color || CURSOR_COLORS[0]
+        color: state.user.color || CURSOR_COLORS[0],
+        touch: IS_TOUCH
     });
 }
 
-function updateRemoteCursor(userId, username, color, wx, wy) {
+function updateRemoteCursor(userId, username, color, wx, wy, touch) {
     let entry = state.remoteCursors.get(userId);
     if (!entry) {
         const el = document.createElement('div');
         const c = color || '#4ade80';
-        // On touch/mobile a mouse-pointer arrow looks odd → show a presence dot instead
-        const isMobile = window.innerWidth <= 768;
-        el.className = 'remote-cursor' + (isMobile ? ' mobile' : '');
+        // Shape reflects the SENDER's device: touch → presence dot, desktop → arrow
+        el.className = 'remote-cursor' + (touch ? ' mobile' : '');
         el.style.setProperty('--cursor-color', c);
-        el.innerHTML = (isMobile
+        el.innerHTML = (touch
             ? `<div class="remote-cursor-dot" style="background:${c}"></div>`
             : `<svg class="remote-cursor-arrow" viewBox="0 0 12 18" width="12" height="18">
                 <path d="M0,0 L0,15 L4,11 L7,17 L9,16 L6,10 L11,10 Z" fill="${c}"/>
@@ -2459,22 +2861,24 @@ function setupKeyboard() {
     document.addEventListener('keydown', e => {
         const tag     = document.activeElement.tagName;
         const editing = tag==='INPUT' || tag==='TEXTAREA' || document.activeElement.contentEditable==='true';
+        // Use e.code (physical key) so shortcuts work on any layout (e.g. Russian ЯЦУКЕН)
+        const code = e.code;
         if (e.ctrlKey || e.metaKey) {
-            if (e.key==='z') { e.preventDefault(); e.shiftKey ? redoAction() : undoAction(); return; }
-            if (e.key==='y') { e.preventDefault(); redoAction(); return; }
-            if (e.key==='a' && !editing) { e.preventDefault(); selectAll(); return; }
-            if (e.key==='d' && !editing) {
+            if (code==='KeyZ') { e.preventDefault(); e.shiftKey ? redoAction() : undoAction(); return; }
+            if (code==='KeyY') { e.preventDefault(); redoAction(); return; }
+            if (code==='KeyA' && !editing) { e.preventDefault(); selectAll(); return; }
+            if (code==='KeyD' && !editing) {
                 e.preventDefault();
                 state.selected.forEach(id => { const n=state.nodes.get(id); if(n) createNoteAtPos(n.data.position.x+24,n.data.position.y+24,n.data); });
                 return;
             }
         }
         if (editing) return;
-        const map = { v:'select', h:'pan', n:'note', c:'connect', p:'draw', e:'eraser' };
-        const t = map[e.key.toLowerCase()];
+        const map = { KeyV:'select', KeyH:'pan', KeyN:'note', KeyC:'connect', KeyP:'draw', KeyE:'eraser' };
+        const t = map[code];
         if (t) { if ((t === 'draw' || t === 'eraser') && state.readOnly) { /* readers can't draw */ } else setTool(t); }
-        if (e.key==='f' || e.key==='F') triggerFileUpload();
-        if (e.key==='0') fitView();
+        if (code==='KeyF') triggerFileUpload();
+        if (code==='Digit0' || code==='Numpad0') fitView();
         if (e.key==='Escape') {
             setTool('select');
             state.selected.forEach(id => deselectNode(id)); state.selected.clear();
@@ -2484,8 +2888,8 @@ function setupKeyboard() {
             document.querySelectorAll('.connecting-source').forEach(el => el.classList.remove('connecting-source'));
         }
         if (e.key==='Delete' || e.key==='Backspace') { [...state.selected].forEach(id => deleteNode(id)); }
-        if (e.key==='=' || e.key==='+') changeZoom(0.1);
-        if (e.key==='-') changeZoom(-0.1);
+        if (code==='Equal' || code==='NumpadAdd') changeZoom(0.1);
+        if (code==='Minus' || code==='NumpadSubtract') changeZoom(-0.1);
     });
 }
 
@@ -2580,7 +2984,7 @@ function markOffline() {
     isOffline = true;
     if (updatingEl) {
         updatingEl.classList.add('show', 'offline');
-        updatingEl.innerHTML = '<div class="updating-dot"></div> no connection — reverting';
+        updatingEl.innerHTML = '<div class="updating-dot"></div> no connection — changes will sync';
     }
     if (wsStatus) { wsStatus.textContent = 'offline'; wsDot.style.background = 'var(--red)'; }
 }
@@ -2592,6 +2996,7 @@ function markOnline() {
         updatingEl.innerHTML = '<div class="updating-dot"></div> updating...';
     }
     if (ws && ws.connected) { wsStatus.textContent = 'live'; wsDot.style.background = 'var(--green)'; }
+    flushPendingEdits();  // replay any edits made while offline
 }
 
 function renameSpace() {
@@ -2612,8 +3017,10 @@ function showUserMenu() {
 
 function clearCanvas() {
     if (state.readOnly) { showToast('Read-only — viewing mode', 'error'); return; }
-    if (!confirm('Move ALL nodes to Trash?')) return;
+    if (!confirm('Move ALL nodes to Trash and erase drawings?')) return;
     state.nodes.forEach((_,id) => deleteNode(id));
+    // also erase freehand strokes
+    [...state.strokes.keys()].forEach(id => deleteStroke(id));
 }
 
 // ══════════════════════════════════════════════════════
@@ -2726,11 +3133,14 @@ async function loadTrash() {
 function renderTrash(nodes, edges) {
     const listEl = $('trash-list');
     listEl.innerHTML = '';
+    const isOwner = state.spaceRole === 'owner';
+    // Show "Delete All" only for the owner when there's something to purge
+    const delAll = $('trash-delete-all');
+    if (delAll) delAll.style.display = (isOwner && (nodes.length || edges.length)) ? '' : 'none';
     if (nodes.length === 0 && edges.length === 0) {
         listEl.innerHTML = '<div class="trash-empty">// trash is empty</div>';
         return;
     }
-    const isOwner = state.spaceRole === 'owner';
     nodes.forEach(n => {
         const row = document.createElement('div');
         row.className = 'trash-row';
@@ -2761,10 +3171,21 @@ function renderTrash(nodes, edges) {
             </div>
             <div class="trash-actions">
                 <button class="trash-restore-btn">Restore</button>
+                ${isOwner ? '<button class="trash-purge-btn" title="Delete forever">✕</button>' : ''}
             </div>`;
         row.querySelector('.trash-restore-btn').onclick = () => restoreTrashEdge(e._id);
+        const purge = row.querySelector('.trash-purge-btn');
+        if (purge) purge.onclick = () => purgeTrashEdge(e._id);
         listEl.appendChild(row);
     });
+}
+
+async function purgeTrashEdge(edgeId) {
+    if (!confirm('Delete this connection forever?')) return;
+    try {
+        const res = await apiFetch(`${API_BASE}/spaces/${state.spaceId}/trash/edges/${edgeId}`, 'DELETE');
+        if (res.ok) loadTrash();
+    } catch { showToast('Purge failed', 'error'); }
 }
 
 async function restoreTrashNode(nodeId) {
@@ -2790,6 +3211,16 @@ async function restoreTrashEdge(edgeId) {
         showToast('Connection restored', 'success');
         await loadTrash();
     } catch { showToast('Restore failed', 'error'); }
+}
+
+async function emptyTrash() {
+    if (state.spaceRole !== 'owner') { showToast('Owner only', 'error'); return; }
+    if (!confirm('Permanently delete EVERYTHING in the trash? This cannot be undone.')) return;
+    try {
+        const res = await apiFetch(`${API_BASE}/spaces/${state.spaceId}/trash`, 'DELETE');
+        if (res.ok) { showToast('Trash emptied', 'success'); await loadTrash(); }
+        else showToast('Failed to empty trash', 'error');
+    } catch { showToast('Failed to empty trash', 'error'); }
 }
 
 async function purgeTrashNode(nodeId, title) {

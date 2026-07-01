@@ -113,7 +113,8 @@ const SpaceSchema = new mongoose.Schema({
 
 const NodeSchema = new mongoose.Schema({
     spaceId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Space', required: true },
-    type:     { type: String, enum: ['note', 'file', 'image', 'ai-generated'], default: 'note' },
+    type:     { type: String, enum: ['note', 'file', 'image', 'ai-generated', 'folder'], default: 'note' },
+    parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Node', default: null }, // set → filed inside a folder
     title:    { type: String, default: 'Note' },
     content:  { type: String, default: '' },
     position: { x: { type: Number, default: 100 }, y: { type: Number, default: 100 } },
@@ -895,23 +896,6 @@ io.on('connection', (socket) => {
 async function handleRequest(req, res) {
     const url = req.url.split('?')[0];
     const method = req.method;
-    const host = req.headers.host || '';
-
-    // ── Domain Redirects ──
-    if (host.includes('crlx1q.com') && !host.startsWith('space.')) {
-        if (url === '/space' || url === '/space/') {
-            res.writeHead(302, { Location: `https://space.crlx1q.com/` });
-            return res.end();
-        }
-        if (url.startsWith('/space/canvas')) {
-            res.writeHead(302, { Location: `https://space.crlx1q.com${url.replace('/space', '')}` });
-            return res.end();
-        }
-        if (url.startsWith('/canvas')) {
-            res.writeHead(302, { Location: `https://space.crlx1q.com${url}` });
-            return res.end();
-        }
-    }
 
     // ── Health ──
     if (url === '/health' && method === 'GET') {
@@ -1624,6 +1608,25 @@ async function handleRequest(req, res) {
         }
     }
 
+    // Empty the whole trash now — owner only (also removes R2 files)
+    if (trashListMatch && method === 'DELETE') {
+        const spaceId = trashListMatch[1];
+        const ctx = await requireSpaceAccess(req, res, spaceId, 'owner');
+        if (!ctx) return;
+        try {
+            const nodes = await Node.find({ spaceId, deleted: true }).lean();
+            const keys = nodes.map(n => n.fileRef?.r2Key).filter(Boolean);
+            if (keys.length) await deleteR2Keys(keys);
+            await Node.deleteMany({ spaceId, deleted: true });
+            await Edge.deleteMany({ spaceId, deleted: true });
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ ok: true, removed: nodes.length }));
+        } catch {
+            res.writeHead(500, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ error: 'Server error' }));
+        }
+    }
+
     // Restore a trashed node (and any edges that were cascaded with it and whose other end still lives)
     const restoreNodeMatch = url.match(/^\/api\/space\/spaces\/([a-f0-9]{24})\/trash\/nodes\/([a-f0-9]{24})\/restore$/);
     if (restoreNodeMatch && method === 'POST') {
@@ -1711,6 +1714,22 @@ async function handleRequest(req, res) {
                 await Edge.deleteMany({ spaceId, deleted: true, $or: [{ sourceNodeId: nodeId }, { targetNodeId: nodeId }] });
                 await Node.deleteOne({ _id: nodeId });
             }
+            res.writeHead(200, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ ok: true }));
+        } catch {
+            res.writeHead(500, getSecurityHeaders('application/json'));
+            return res.end(JSON.stringify({ error: 'Server error' }));
+        }
+    }
+
+    // Permanently purge a single trashed edge — owner only
+    const purgeEdgeMatch = url.match(/^\/api\/space\/spaces\/([a-f0-9]{24})\/trash\/edges\/([a-f0-9]{24})$/);
+    if (purgeEdgeMatch && method === 'DELETE') {
+        const [, spaceId, edgeId] = purgeEdgeMatch;
+        const ctx = await requireSpaceAccess(req, res, spaceId, 'owner');
+        if (!ctx) return;
+        try {
+            await Edge.deleteOne({ _id: edgeId, spaceId, deleted: true });
             res.writeHead(200, getSecurityHeaders('application/json'));
             return res.end(JSON.stringify({ ok: true }));
         } catch {
@@ -1984,8 +2003,7 @@ async function handleRequest(req, res) {
     }
 
     // ── Serve Space (also handles /canvas/:slug — slug resolved client-side) ──
-    const isSpaceRoot = host.startsWith('space.') && url === '/';
-    if (isSpaceRoot || url === '/space' || url === '/space/' || url === '/canvas' || url === '/canvas/' || /^\/canvas\/[A-Za-z0-9_-]+$/.test(url)) {
+    if (url === '/space' || url === '/space/' || url === '/canvas' || url === '/canvas/' || /^\/canvas\/[A-Za-z0-9_-]+$/.test(url)) {
         if (fs.existsSync(path.join(PUBLIC_DIR, 'space.html'))) {
             res.writeHead(200, getSecurityHeaders('text/html'));
             return res.end(fs.readFileSync(path.join(PUBLIC_DIR, 'space.html')));

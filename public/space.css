@@ -187,7 +187,9 @@ html, body {
 .online-count .dot { width:5px;height:5px;border-radius:50%;background:var(--green); }
 .online-count:hover #online-tooltip { display:block; }
 
-#online-tooltip { position:absolute;top:calc(100%+8px);right:0;min-width:140px;background:var(--ctx-bg);border:1px solid var(--border-h);backdrop-filter:var(--glass);padding:8px 0;z-index:500;display:none;box-shadow:var(--shadow); }
+#online-tooltip { position:absolute;top:calc(100% + 10px);right:0;min-width:170px;max-height:60vh;overflow-y:auto;background:var(--ctx-bg);border:1px solid var(--border-h);backdrop-filter:var(--glass);padding:8px 0;z-index:1200;display:none;box-shadow:var(--shadow); }
+#online-tooltip::-webkit-scrollbar { width:4px; }
+#online-tooltip::-webkit-scrollbar-thumb { background:var(--border-h); }
 .online-user-item { display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:10px;color:var(--muted); }
 .online-user-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
 
@@ -319,7 +321,7 @@ body.drawing-mode .space-node { cursor:inherit; }
     border:1px solid var(--border-h);background:rgba(128,128,128,0.06);
     color:var(--muted);
 }
-.file-type-badge svg { width:19px;height:19px; }
+.file-type-badge svg { width:20px;height:20px;display:block;stroke-linecap:round;stroke-linejoin:round; }
 .file-ext-tag { font-size:9px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;border:1px solid var(--border);padding:2px 7px; }
 .file-name-small { font-size:9px;color:var(--dim);text-align:center;word-break:break-all;max-width:130px; }
 /* Audio / video previews */
@@ -338,7 +340,7 @@ body.drawing-mode .space-node { cursor:inherit; }
 .node-action-btn { width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:none;border:none;color:var(--muted);transition:color 0.15s; }
 .node-action-btn:hover { color:var(--white); }
 .node-action-btn.danger:hover { color:var(--red); }
-.node-action-btn svg { width:11px;height:11px; }
+.node-action-btn svg { width:12px;height:12px;stroke-linecap:round;stroke-linejoin:round; }
 
 /* Color variants */
 /* --node-accent drives the selection border/glow for coloured nodes */
@@ -569,9 +571,30 @@ body.drawing-mode .space-node { cursor:inherit; }
    MISC
    ══════════════════════════════════════════════════════ */
 .loading-spinner { width:16px;height:16px;border:1.5px solid var(--border);border-top-color:var(--white);border-radius:50%;animation:spin 0.7s linear infinite; }
+/* Auth button has a white background → use a contrasting spinner (visible without hover) */
+.auth-btn .loading-spinner { border-color:rgba(128,128,128,0.45);border-top-color:var(--green); }
 @keyframes spin { to{transform:rotate(360deg)} }
 .ai-messages::-webkit-scrollbar { width:3px; }
 .ai-messages::-webkit-scrollbar-thumb { background:var(--border-h); }
+
+/* ══════════════════════════════════════════════════════
+   FOLDERS
+   ══════════════════════════════════════════════════════ */
+.folder-body { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;cursor:pointer; }
+.folder-icon-big svg { width:46px;height:46px;color:var(--muted); }
+.space-node.color-white  .folder-icon-big svg { color:rgba(200,200,200,0.9); }
+.space-node.color-blue   .folder-icon-big svg { color:#60a5fa; }
+.space-node.color-green  .folder-icon-big svg { color:#4ade80; }
+.space-node.color-purple .folder-icon-big svg { color:#c084fc; }
+.space-node.color-yellow .folder-icon-big svg { color:#facc15; }
+.space-node.color-red    .folder-icon-big svg { color:#f87171; }
+.folder-count { font-size:10px;color:var(--dim);letter-spacing:0.14em;text-transform:uppercase; }
+.folder-open-btn { font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);background:none;padding:4px 10px;cursor:pointer;transition:var(--transition); }
+.folder-open-btn:hover { color:var(--white);border-color:var(--border-h); }
+/* highlight a folder that a dragged node is hovering over */
+.space-node.folder-drop .node-card { border-color:var(--green) !important;box-shadow:0 0 0 2px rgba(74,222,128,0.35),var(--shadow); }
+.folder-eject-btn { font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);background:none;padding:4px 8px;cursor:pointer; }
+.folder-eject-btn:hover { color:var(--white);border-color:var(--border-h); }
 
 /* ══════════════════════════════════════════════════════
    TEAM GROUP CHAT
@@ -592,8 +615,8 @@ body.drawing-mode .space-node { cursor:inherit; }
 #team-chat.mode-floating .team-chat-header,
 #team-chat.mode-canvas  .team-chat-header { cursor:move; }
 .team-chat-title { font-family:var(--font-display);font-size:11px;letter-spacing:0.12em;color:var(--white); }
-.team-chat-presence { display:flex;align-items:center;gap:-4px;flex:1;overflow:hidden; }
-.tc-presence-dot { width:16px;height:16px;border-radius:50%;border:1px solid var(--bg);margin-left:-4px;font-size:8px;display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;text-transform:uppercase; }
+.team-chat-presence { display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden;flex-wrap:nowrap; }
+.tc-presence-dot { width:16px;height:16px;border-radius:50%;border:1px solid var(--bg);flex-shrink:0;font-size:8px;display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;text-transform:uppercase; }
 .team-chat-modes { display:flex;gap:2px; }
 .tc-mode-btn,.tc-icon-btn { width:24px;height:24px;display:flex;align-items:center;justify-content:center;background:none;border:1px solid transparent;color:var(--muted);cursor:pointer;transition:var(--transition); }
 .tc-mode-btn svg,.tc-icon-btn svg { width:13px;height:13px; }
@@ -614,7 +637,7 @@ body.drawing-mode .space-node { cursor:inherit; }
 .tc-mention { color:#60a5fa;font-weight:700; }
 /* reactions */
 .tc-reactions { display:flex;flex-wrap:wrap;gap:4px;margin-top:2px; }
-.tc-reaction { display:flex;align-items:center;gap:3px;font-size:10px;padding:1px 6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;user-select:none; }
+.tc-reaction { display:flex;align-items:center;gap:3px;font-size:10px;padding:1px 6px;border:1px solid var(--border);background:var(--surface);color:var(--white);cursor:pointer;user-select:none; }
 .tc-reaction.mine { border-color:var(--border-sel);background:rgba(96,165,250,0.12); }
 .tc-react-add { position:absolute;top:-8px;opacity:0;transition:opacity .12s;display:flex;gap:2px;background:var(--ctx-bg);border:1px solid var(--border-h);padding:2px 4px;box-shadow:var(--shadow);z-index:2; }
 .tc-msg:not(.mine) .tc-react-add { right:-4px; }
@@ -631,19 +654,32 @@ body.drawing-mode .space-node { cursor:inherit; }
 .team-chat-send:hover { color:var(--white);border-color:var(--border-h); }
 .team-chat-send svg { width:15px;height:15px; }
 
+/* Resize handle (floating / canvas modes only) */
+.tc-resize { display:none;position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;z-index:3;
+    background:linear-gradient(135deg,transparent 0 50%,var(--border-h) 50% 60%,transparent 60% 70%,var(--border-h) 70% 80%,transparent 80%); }
+#team-chat.mode-floating .tc-resize,
+#team-chat.mode-canvas  .tc-resize { display:block; }
+
 /* ══════════════════════════════════════════════════════
    MOBILE
    ══════════════════════════════════════════════════════ */
 @media (max-width:768px) {
-    /* ── Topbar: slim, icon-only, keep canvas switcher + AI + avatar ── */
-    .topbar { padding:0 10px; gap:8px; }
+    /* ── Topbar: slim, icon-only, keep canvas switcher + chat + AI + avatar ── */
+    .topbar { padding:0 8px; gap:6px; }
     .topbar-center, .topbar-status, .online-count, #admin-link { display:none; }
     .topbar-sep { display:none; }
     .topbar-brand-name { font-size:11px; }
+    /* right group scrolls horizontally so every button (incl. Chat) stays reachable */
+    .topbar-right { overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;-webkit-overflow-scrolling:touch; }
+    .topbar-right::-webkit-scrollbar { display:none; }
+    .topbar-right > * { flex-shrink:0; }
     .topbar-btn { padding:7px; gap:0; font-size:0; }      /* hide text labels, keep svg */
     .topbar-btn svg { width:15px;height:15px; }
-    .canvas-switcher-btn .topbar-space-name { max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block; }
+    .canvas-switcher-btn .topbar-space-name { max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block; }
     .canvas-dropdown { min-width:220px; }
+
+    /* bigger touch target for the resize corner */
+    .node-resize { width:22px;height:22px; }
 
     /* ── AI panel becomes a right-side drawer ── */
     #ai-panel { position:absolute;right:0;top:0;bottom:0;z-index:200;width:min(86vw,340px);box-shadow:var(--shadow); }

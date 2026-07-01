@@ -206,20 +206,24 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
                 <span class="tool-tooltip">Upload File <span class="kbd">F</span></span>
             </button>
+            <button class="tool-btn edit-only" id="tool-folder" onclick="createFolder()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                <span class="tool-tooltip">New Folder</span>
+            </button>
             <button class="tool-btn edit-only" id="tool-connect" data-tool="connect" onclick="setTool('connect')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><path d="M7 12h10"/></svg>
                 <span class="tool-tooltip">Connect <span class="kbd">C</span></span>
             </button>
             <button class="tool-btn edit-only" id="tool-draw" data-tool="draw" onclick="setTool('draw')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                 <span class="tool-tooltip">Draw <span class="kbd">P</span></span>
             </button>
             <button class="tool-btn edit-only" id="tool-eraser" data-tool="eraser" onclick="setTool('eraser')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 20H7L3 16a2 2 0 010-3l9-9a2 2 0 013 0l5 5a2 2 0 010 3l-7 7"/><path d="M9 9l6 6"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3a1.7 1.7 0 0 1 0-2.4l9.6-9.6a1.7 1.7 0 0 1 2.4 0l5.6 5.6a1.7 1.7 0 0 1 0 2.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
                 <span class="tool-tooltip">Eraser <span class="kbd">E</span></span>
             </button>
             <button class="tool-btn edit-only" id="tool-palette" onclick="togglePalette(event)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6 2 11c0 4 3 7 7 7 1 0 2-1 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2 0-1 .8-1.8 1.8-1.8H14c4 0 6-2.5 6-6 0-3.6-3.6-6.7-8-6.7z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2Z"/></svg>
                 <span class="tool-tooltip">Palette</span>
                 <span class="pen-color-dot" id="pen-color-dot"></span>
             </button>
@@ -400,6 +404,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
             </button>
         </div>
+        <div class="tc-resize" id="tc-resize" title="Resize"></div>
     </section>
 </div>
 
@@ -515,8 +520,26 @@
             <div class="trash-list" id="trash-list"></div>
         </div>
         <div class="modal-footer">
+            <button class="btn btn-ghost" id="trash-delete-all" onclick="emptyTrash()" style="display:none;color:var(--red);border-color:rgba(239,68,68,0.4)">Delete All</button>
             <button class="btn btn-ghost" onclick="loadTrash()">Refresh</button>
             <button class="btn btn-primary" onclick="closeModal('trash-modal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ FOLDER CONTENTS MODAL ══════════════ -->
+<div class="modal-overlay" id="folder-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title"><span class="w" id="folder-modal-name">Folder</span></span>
+            <button class="modal-close" onclick="closeModal('folder-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="access-hint">// drag items onto the folder on the canvas to file them here</div>
+            <div class="trash-list" id="folder-list"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="closeModal('folder-modal')">Close</button>
         </div>
     </div>
 </div>
