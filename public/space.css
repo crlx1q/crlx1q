@@ -845,3 +845,34 @@ body.read-only .node-resize { display:none !important; }
 body.read-only .node-action-btn.danger,
 body.read-only .node-action-btn[title="Edit"] { display:none !important; }
 body.read-only .space-node { cursor:default; }
+
+/* ══════════════ NOTE RICH CONTENT (checklists, progress, timestamps) ══════════════ */
+.node-body .note-line { min-height:1.25em; }
+.node-body .note-check-line { display:flex;align-items:flex-start;gap:7px;margin:2px 0; }
+.note-check-box {
+    flex-shrink:0;width:15px;height:15px;margin-top:1px;
+    border:1px solid var(--border-h);border-radius:3px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;line-height:1;font-weight:700;cursor:pointer;user-select:none;
+    background:rgba(128,128,128,0.06);color:transparent;
+    transition:background 0.15s,border-color 0.15s,color 0.15s,transform 0.1s;
+}
+.note-check-box:hover { border-color:var(--white);transform:scale(1.08); }
+.note-check-box.checked   { background:rgba(74,222,128,0.18);border-color:rgba(74,222,128,0.7);color:var(--green,#4ade80); }
+.note-check-box.cancelled { background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.6);color:var(--red,#ef4444); }
+.note-check-text { flex:1;word-break:break-word; }
+.note-check-text.done      { text-decoration:line-through;opacity:0.55; }
+.note-check-text.cancelled { text-decoration:line-through;opacity:0.45; }
+.note-strike { text-decoration:line-through;opacity:0.7; }
+.node-body strong { color:var(--white);font-weight:700; }
+[data-theme="light"] .node-body strong { color:#111; }
+.note-code { font-family:'JetBrains Mono',monospace;background:rgba(128,128,128,0.16);padding:0 4px;border-radius:3px;font-size:0.92em; }
+.note-progress { display:flex;align-items:center;gap:8px;margin:0 0 8px;user-select:none; }
+.note-progress-track { flex:1;height:5px;border-radius:3px;background:rgba(128,128,128,0.2);overflow:hidden; }
+.note-progress-fill { height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green,#4ade80),rgba(74,222,128,0.65));transition:width 0.25s ease; }
+.note-progress-label { font-size:9px;color:var(--dim);letter-spacing:0.05em;white-space:nowrap;flex-shrink:0; }
+.note-ts {
+    display:inline;background:rgba(96,165,250,0.16);color:rgba(147,197,253,0.95);
+    border-radius:3px;padding:0 4px;font-size:0.95em;white-space:nowrap;cursor:default;
+}
+[data-theme="light"] .note-ts { background:rgba(37,99,235,0.12);color:#1d4ed8; }

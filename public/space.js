@@ -939,7 +939,7 @@ function buildNoteNodeHTML(data, createdAt) {
              onblur="onNodeContentBlur(this)"
              oninput="onNodeContentInput(this)"
              onclick="stopPropIfEditing(event)"
-             onfocus="onNodeContentFocus(this)">${escHtml(data.content||'')}</div>
+             onfocus="onNodeContentFocus(this)">${renderNoteContent(data.content||'', data._id)}</div>
         <div class="node-footer">
             <div class="node-date">${createdAt}</div>
             <div class="node-actions">
@@ -1365,7 +1365,7 @@ function renderNodeField(node, key, value) {
         if (t && document.activeElement !== t) t.textContent = value || '';
     } else if (key === 'content') {
         const b = el.querySelector('.node-body');
-        if (b && document.activeElement !== b) { b.textContent = value || ''; b.classList.toggle('empty', !value); }
+        if (b && document.activeElement !== b) { b.innerHTML = renderNoteContent(value || '', id); b.classList.toggle('empty', !(value || '').trim()); }
     } else if (key === 'color') {
         el.className = el.className.replace(/\bcolor-\w+\b/g, '').trim();
         if (value) el.classList.add(`color-${value}`);
@@ -1383,6 +1383,15 @@ function onNodeContentFocus(el) {
     if (ws && state.user) {
         ws.emit('node:editing', { spaceId: state.spaceId, nodeId: id, userId: state.user._id, color: state.user.color });
     }
+    // Switch to raw plaintext for editing; rich preview is restored on blur.
+    if (el.dataset.editing !== '1') {
+        el.dataset.editing = '1';
+        const node = state.nodes.get(id);
+        const raw = node ? (node.data.content || '') : '';
+        el.textContent = raw;
+        el.classList.toggle('empty', !raw.trim());
+        placeCaretAtEnd(el);
+    }
 }
 
 // Inline title editing (note + file nodes)
@@ -1397,9 +1406,14 @@ function onNodeTitleBlur(el) {
 
 function onNodeContentBlur(el) {
     const id      = el.dataset.nodeId;
-    const content = el.textContent || '';
-    el.classList.toggle('empty', !content);
+    const content = (el.innerText || '').replace(/\n$/, '');
+    el.classList.toggle('empty', !content.trim());
+    const node = state.nodes.get(id);
+    if (node) node.data.content = content;
     saveNodeData(id, { content });
+    // restore rich preview (checklists, timestamps, formatting)
+    el.dataset.editing = '';
+    el.innerHTML = renderNoteContent(content, id);
     // clear editing state
     if (ws) ws.emit('node:editing-stop', { spaceId: state.spaceId, nodeId: id, userId: state.user?._id });
     const debTimer = state.contentDebounce.get(id);
@@ -1408,8 +1422,8 @@ function onNodeContentBlur(el) {
 
 function onNodeContentInput(el) {
     const id      = el.dataset.nodeId;
-    const content = el.textContent || '';
-    el.classList.toggle('empty', !content);
+    const content = el.innerText || '';
+    el.classList.toggle('empty', !content.trim());
     // Debounced save + WS emit for real-time (Stage 2)
     clearTimeout(state.contentDebounce.get(id));
     const t = setTimeout(() => {
@@ -1427,6 +1441,139 @@ function onNodeContentInput(el) {
 }
 
 function stopPropIfEditing(e) { e.stopPropagation(); }
+
+// ══════════════════════════════════
+// NOTE RICH CONTENT — checklists, progress, strike, Discord timestamps
+// ══════════════════════════════════
+
+function placeCaretAtEnd(el) {
+    try {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    } catch (e) {}
+}
+
+const NOTE_CHECK_RE = /^(\s*)([-*])\s+\[([ xX\-])\]\s?(.*)$/;
+
+// Render a note's raw plaintext into rich HTML (checklists, progress bar,
+// strikethrough, bold/italic, inline code, Discord-style timestamps).
+function renderNoteContent(raw, nodeId) {
+    if (raw == null) raw = '';
+    raw = String(raw);
+    if (!raw.trim()) return '';
+    const lines = raw.split('\n');
+    let total = 0, done = 0;
+    const rows = lines.map((line, i) => {
+        const m = line.match(NOTE_CHECK_RE);
+        if (m) {
+            const st = m[3].toLowerCase();
+            total++;
+            let cls = 'note-check-box', mark = '', txtCls = 'note-check-text';
+            if (st === 'x') { cls += ' checked'; mark = '✓'; txtCls += ' done'; done++; }
+            else if (st === '-') { cls += ' cancelled'; mark = '✗'; txtCls += ' cancelled'; }
+            const pad = m[1] ? ` style="padding-left:${Math.min(m[1].length, 8) * 10}px"` : '';
+            const nid = nodeId ? String(nodeId) : '';
+            return `<div class="note-check-line"${pad}><span class="${cls}" contenteditable="false" onmousedown="toggleNoteCheck(event,'${nid}',${i})">${mark}</span><span class="${txtCls}">${inlineRenderNote(m[4]) || '&nbsp;'}</span></div>`;
+        }
+        if (line.trim() === '') return '<div class="note-line"><br></div>';
+        return `<div class="note-line">${inlineRenderNote(line)}</div>`;
+    }).join('');
+    let bar = '';
+    if (total > 0) {
+        const pct = Math.round((done / total) * 100);
+        bar = `<div class="note-progress" contenteditable="false"><div class="note-progress-track"><div class="note-progress-fill" style="width:${pct}%"></div></div><span class="note-progress-label">${done}/${total} · ${pct}%</span></div>`;
+    }
+    return bar + rows;
+}
+
+// Inline formatting: **bold**, *italic*, ~~strike~~, `code`, <t:UNIX:STYLE>
+function inlineRenderNote(text) {
+    let s = escHtml(text);
+    s = s.replace(/&lt;t:(-?\d{1,15})(?::([tTdDfFR]))?&gt;/g, (mm, ts, stl) => {
+        const unix = parseInt(ts, 10);
+        const style = stl || 'f';
+        const disp = escHtml(formatDiscordTimestamp(unix, style));
+        const full = escAttr(formatDiscordTimestamp(unix, 'F'));
+        return `<span class="note-ts" data-ts="${unix}" data-style="${style}" contenteditable="false" title="${full}">${disp}</span>`;
+    });
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/~~([^~]+)~~/g, '<span class="note-strike">$1</span>');
+    s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+    s = s.replace(/`([^`]+)`/g, '<code class="note-code">$1</code>');
+    return s;
+}
+
+// Discord timestamp formatting — <t:UNIX:STYLE> with styles t T d D f F R
+function formatDiscordTimestamp(unix, style) {
+    if (!isFinite(unix)) return '';
+    const d = new Date(unix * 1000);
+    if (isNaN(d.getTime())) return '';
+    const loc = 'ru-RU';
+    switch (style) {
+        case 't': return d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+        case 'T': return d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        case 'd': return d.toLocaleDateString(loc, { day: '2-digit', month: '2-digit', year: 'numeric' });
+        case 'D': return d.toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' });
+        case 'F': return d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ', ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+        case 'R': return formatRelativeTime(unix);
+        case 'f':
+        default:  return d.toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+    }
+}
+
+function formatRelativeTime(unix) {
+    const diff = unix - Date.now() / 1000;
+    const abs = Math.abs(diff);
+    const rtf = (typeof Intl !== 'undefined' && Intl.RelativeTimeFormat)
+        ? new Intl.RelativeTimeFormat('ru', { numeric: 'auto' }) : null;
+    const units = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60], ['second', 1]];
+    for (const [unit, secs] of units) {
+        if (abs >= secs || unit === 'second') {
+            const val = Math.round(diff / secs);
+            if (rtf) return rtf.format(val, unit);
+            return (val >= 0 ? 'in ' : '') + Math.abs(val) + ' ' + unit + (Math.abs(val) === 1 ? '' : 's') + (val < 0 ? ' ago' : '');
+        }
+    }
+    return '';
+}
+
+// Toggle a checklist item on click: [ ] -> [x] -> [-] -> [ ]
+function toggleNoteCheck(event, nodeId, lineIndex) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    if (state.readOnly) { showToast('Read-only — viewing mode', 'error'); return; }
+    const node = state.nodes.get(nodeId);
+    if (!node) return;
+    const lines = String(node.data.content || '').split('\n');
+    const line = lines[lineIndex];
+    if (line === undefined) return;
+    const m = line.match(NOTE_CHECK_RE);
+    if (!m) return;
+    const cur = m[3].toLowerCase();
+    const next = cur === ' ' ? 'x' : (cur === 'x' ? '-' : ' ');
+    lines[lineIndex] = `${m[1]}${m[2]} [${next}] ${m[4]}`;
+    const content = lines.join('\n');
+    node.data.content = content;
+    const bodyEl = node.el.querySelector('.node-body');
+    if (bodyEl && bodyEl.dataset.editing !== '1') {
+        bodyEl.innerHTML = renderNoteContent(content, nodeId);
+        bodyEl.classList.toggle('empty', !content.trim());
+    }
+    saveNodeData(nodeId, { content });
+    if (ws) ws.emit('node:update', { spaceId: state.spaceId, nodeId, updates: { content }, userId: state.user?._id });
+}
+
+// Live-refresh relative (R) timestamps across all notes
+function refreshNoteTimestamps() {
+    document.querySelectorAll('.note-ts[data-style="R"]').forEach(el => {
+        const unix = parseInt(el.dataset.ts, 10);
+        el.textContent = formatDiscordTimestamp(unix, 'R');
+    });
+}
+setInterval(refreshNoteTimestamps, 15000);
 
 // Works for both mouse and touch (tablets can resize via the corner handle)
 function onResizeMousedown(e) {
@@ -2077,7 +2224,7 @@ async function saveNodeEdit() {
         const titleEl = n.el.querySelector('.node-title');
         if (titleEl) titleEl.textContent = title;
         const bodyEl = n.el.querySelector('.node-body');
-        if (bodyEl) { bodyEl.textContent = content; bodyEl.classList.toggle('empty', !content); }
+        if (bodyEl) { bodyEl.dataset.editing = ''; bodyEl.innerHTML = renderNoteContent(content, editingNodeId); bodyEl.classList.toggle('empty', !content.trim()); }
         n.el.className = n.el.className.replace(/\bcolor-\w+\b/g,'').trim();
         if (color) n.el.classList.add(`color-${color}`);
         await saveNodeData(editingNodeId, { title, content, color });
@@ -2350,7 +2497,7 @@ function initWebSocket() {
         Object.assign(n.data, updates);
         if (updates.content !== undefined) {
             const b = n.el.querySelector('.node-body');
-            if (b && document.activeElement !== b) { b.textContent = updates.content; b.classList.toggle('empty', !updates.content); }
+            if (b && document.activeElement !== b) { b.innerHTML = renderNoteContent(updates.content, nodeId); b.classList.toggle('empty', !(updates.content || '').trim()); }
         }
         if (updates.title !== undefined) {
             const t = n.el.querySelector('.node-title');
@@ -2903,8 +3050,8 @@ function setupKeyboard() {
         // Use e.code (physical key) so shortcuts work on any layout (e.g. Russian ЯЦУКЕН)
         const code = e.code;
         if (e.ctrlKey || e.metaKey) {
-            if (code==='KeyZ') { e.preventDefault(); e.shiftKey ? redoAction() : undoAction(); return; }
-            if (code==='KeyY') { e.preventDefault(); redoAction(); return; }
+            if (code==='KeyZ' && !editing) { e.preventDefault(); e.shiftKey ? redoAction() : undoAction(); return; }
+            if (code==='KeyY' && !editing) { e.preventDefault(); redoAction(); return; }
             if (code==='KeyA' && !editing) { e.preventDefault(); selectAll(); return; }
             if (code==='KeyD' && !editing) {
                 e.preventDefault();
