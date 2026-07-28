@@ -3054,6 +3054,7 @@ function updateOnlineTooltip() {
         selfUserId: state.user?._id,
         selfUsername: state.user?.username || 'you',
         selfClientId: DEVICE_ID,
+        selfColor: state.user?.color,
         selfSocketId: ws && ws.id,
         others: list
     })) {

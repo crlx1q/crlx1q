@@ -1,15 +1,20 @@
 // ═════════════════════════════════════════════════════════════
 //  DEVICE PRESENCE — tab list
-//  Shows EVERY participant and EVERY device, including my own devices.
-//  admin + dev online  ->  "admin PC", "dev Mobile", … (me always listed)
+//  Every participant and every device, myself always included.
+//  Row = colored dot (user color) + bright nickname + dim device info.
 //  Every device counts as +1 in the online badge.
 // ═════════════════════════════════════════════════════════════
 (function () {
     'use strict';
 
     var sessions = [];
-    var meta = { selfUserId: null, selfUsername: 'you', selfClientId: null, selfSocketId: null, others: [] };
+    var meta = {
+        selfUserId: null, selfUsername: 'you', selfClientId: null,
+        selfSocketId: null, selfColor: '', others: []
+    };
     var tipEl = null;
+
+    var PALETTE = ['#4ade80', '#60a5fa', '#c084fc', '#fb923c', '#f472b6', '#34d399', '#fbbf24', '#f87171'];
 
     // Lucide-style stroke icons — same family as the rest of the app (no emoji)
     var ICONS = {
@@ -36,7 +41,24 @@
     function svg(kind) {
         return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" ' +
             'stroke-linecap="round" stroke-linejoin="round" ' +
-            'style="width:12px;height:12px;flex:0 0 auto;opacity:.75">' + iconFor(kind) + '</svg>';
+            'style="width:12px;height:12px;flex:0 0 auto;opacity:.55">' + iconFor(kind) + '</svg>';
+    }
+
+    // Stable fallback color when the server did not send one
+    function hashColor(seed) {
+        var s = String(seed || ''), h = 0;
+        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 100000;
+        return PALETTE[h % PALETTE.length];
+    }
+
+    function colorFor(r) {
+        if (r.color) return r.color;
+        if (r.self && meta.selfColor) return meta.selfColor;
+        var known = (meta.others || []).filter(function (u) {
+            return u && String(u.userId) === String(r.userId) && u.color;
+        })[0];
+        if (known) return known.color;
+        return hashColor(r.userId || r.username);
     }
 
     // Local guess for my own device, so I am listed even before the server answers
@@ -56,8 +78,6 @@
         return false;
     }
 
-    // Final tab list: server sessions (deduped per device) + guaranteed self row
-    // + any known participant the server list did not cover yet.
     function rows() {
         var out = [];
         var seen = {};
@@ -68,6 +88,7 @@
             out.push({
                 userId: s.userId,
                 username: s.username || 'user',
+                color: s.color || '',
                 kind: s.kind || 'Device',
                 os: s.os,
                 browser: s.browser,
@@ -80,6 +101,7 @@
             out.push({
                 userId: meta.selfUserId,
                 username: meta.selfUsername || 'you',
+                color: meta.selfColor || '',
                 kind: selfKind(),
                 self: true
             });
@@ -89,10 +111,12 @@
         (meta.others || []).forEach(function (u) {
             if (sameUser(u.userId, meta.selfUserId)) return;
             if (out.some(function (r) { return sameUser(r.userId, u.userId); })) return;
-            out.push({ userId: u.userId, username: u.username || 'user', kind: 'Device', self: false });
+            out.push({
+                userId: u.userId, username: u.username || 'user',
+                color: u.color || '', kind: 'Device', self: false
+            });
         });
 
-        // me first, then alphabetically by name, then by device
         out.sort(function (a, b) {
             if (a.self !== b.self) return a.self ? -1 : 1;
             var n = String(a.username).localeCompare(String(b.username));
@@ -103,15 +127,16 @@
     }
 
     function rowHTML(r) {
-        var sub = [r.os, r.browser].filter(Boolean).join(' ');
-        return '<div class="online-user-item dp-row" style="display:flex;align-items:center;gap:7px;">' +
-                svg(r.kind) +
+        var sub = [r.kind, r.os, r.browser].filter(Boolean).join(' ');
+        var col = colorFor(r);
+        return '<div class="online-user-item dp-row" style="display:flex;align-items:center;gap:8px;">' +
+                '<span class="online-user-dot" style="background:' + esc(col) + ';flex:0 0 auto;"></span>' +
                 '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
-                    esc(r.username) +
-                    '<span style="opacity:.7"> ' + esc(r.kind) + '</span>' +
-                    (sub ? '<span style="opacity:.35"> ' + esc(sub) + '</span>' : '') +
+                    '<span style="color:#e8e8e8;font-weight:500;">' + esc(r.username) + '</span>' +
+                    (r.self ? '<span style="opacity:.45"> (you)</span>' : '') +
                 '</span>' +
-                (r.self ? '<span style="opacity:.4;flex:0 0 auto">you</span>' : '') +
+                svg(r.kind) +
+                '<span style="opacity:.45;flex:0 0 auto;font-size:11px;">' + esc(sub) + '</span>' +
             '</div>';
     }
 
@@ -119,7 +144,6 @@
         var list = rows();
         var total = list.length;
 
-        // The badge counts DEVICES: every device is +1
         var num = byId('online-num');
         if (num) {
             if (num.textContent !== String(total)) num.textContent = String(total);
@@ -143,7 +167,6 @@
     }
 
     window.SpaceDevices = {
-        // Called by space.js from updateOnlineTooltip(); returns true when it rendered
         renderTooltip: function (el, m) {
             try {
                 tipEl = el || tipEl;
@@ -151,6 +174,7 @@
                     if (m.selfUserId) meta.selfUserId = m.selfUserId;
                     if (m.selfUsername) meta.selfUsername = m.selfUsername;
                     if (m.selfClientId) meta.selfClientId = m.selfClientId;
+                    if (m.selfColor) meta.selfColor = m.selfColor;
                     if (m.selfSocketId || m.selfId) meta.selfSocketId = m.selfSocketId || m.selfId;
                     if (Array.isArray(m.others)) meta.others = m.others;
                 }
@@ -159,18 +183,17 @@
             } catch (e) { return false; }
         },
 
-        // Called on every space:online payload from the server
         update: function (payload, m) {
             if (m) {
                 if (m.selfClientId) meta.selfClientId = m.selfClientId;
                 if (m.selfId) meta.selfSocketId = m.selfId;
                 if (m.selfUserId) meta.selfUserId = m.selfUserId;
+                if (m.selfColor) meta.selfColor = m.selfColor;
             }
             if (!payload) return;
             if (Array.isArray(payload.sessions)) {
                 sessions = payload.sessions;
             } else if (Array.isArray(payload.users)) {
-                // Older server without per-device sessions
                 sessions = [];
                 payload.users.forEach(function (u) {
                     var devs = (u.devices && u.devices.length) ? u.devices : [{ kind: 'Device', clientId: u.userId }];
@@ -186,7 +209,6 @@
             paint();
         },
 
-        // Device label for a clientId (remote cursor labels)
         kindFor: function (clientId) {
             var hit = (sessions || []).filter(function (s) { return s.clientId === clientId; })[0];
             return hit ? (hit.kind || '') : '';
