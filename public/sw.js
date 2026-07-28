@@ -4,11 +4,12 @@
  * API requests and cross-origin assets (fonts, R2, Gemini, socket.io) are never
  * intercepted — they go straight to the network.
  */
-const CACHE = 'space-v1';
+const CACHE = 'space-v2';
 const SHELL = [
     '/space',
     '/space.css',
     '/space.js',
+    '/device-presence.js',
     '/icon.svg',
     '/manifest.json',
 ];
@@ -44,7 +45,7 @@ self.addEventListener('fetch', (event) => {
 
     const isShell =
         req.mode === 'navigate' ||
-        ['/space', '/space.css', '/space.js', '/icon.svg', '/manifest.json'].includes(url.pathname);
+        ['/space', '/space.css', '/space.js', '/device-presence.js', '/icon.svg', '/manifest.json'].includes(url.pathname);
 
     if (!isShell) return; // let everything else go to the network untouched
 
