@@ -74,6 +74,17 @@ let state = {
 
 let physics = { edges: new Map(), animFrame: null };
 let ws      = null;
+// Stable id for THIS device (persists across reloads, unique per browser/device).
+// Presence counts devices with it, and it lets your own phone and PC see each
+// other's cursor even though it is the same account.
+const DEVICE_ID = (function () {
+    const gen = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    try {
+        let v = localStorage.getItem('space_device_id');
+        if (!v) { v = gen(); localStorage.setItem('space_device_id', v); }
+        return v;
+    } catch (e) { return gen(); }
+})();
 
 // ─── DOM REFS ────────────────────────────────────────
 const $  = id => document.getElementById(id);
@@ -2418,7 +2429,7 @@ function updateCursorThrottle() {
 }
 
 function initWebSocket() {
-    ws = io({ auth: { token: state.token }, transports: ['websocket'] });
+    ws = io({ auth: { token: state.token, clientId: DEVICE_ID }, transports: ['websocket'] });
 
     ws.on('connect', () => {
         wsStatus.textContent = 'live';
@@ -2454,9 +2465,34 @@ function initWebSocket() {
     // Per-device presence (admin PC / admin Mobile …), rendered by device-presence.js
     ws.on('space:online', (p) => {
         try {
-            if (window.SpaceDevices) window.SpaceDevices.update(p, { selfId: ws.id, selfUserId: state.user?._id });
+            if (window.SpaceDevices) {
+                window.SpaceDevices.update(p, { selfId: ws.id, selfClientId: DEVICE_ID, selfUserId: state.user?._id });
+                updateOnlineTooltip();
+            }
+            // Drop cursors of devices that are no longer connected
+            if (p && Array.isArray(p.sessions) && p.sessions.length) {
+                const live = new Set(p.sessions.map(s => s.clientId || s.socketId));
+                state.remoteCursors.forEach((c, key) => {
+                    if (!live.has(key)) { c.el.remove(); state.remoteCursors.delete(key); }
+                });
+            }
         } catch (e) {}
     });
+
+    // Ask for a fresh device list when it matters (fixes stale 'Only you')
+    const askPresence = () => {
+        try { if (ws && ws.connected && state.spaceId) ws.emit('space:presence', { spaceId: state.spaceId }); } catch (e) {}
+    };
+    ws.on('connect', () => setTimeout(askPresence, 900));
+    const onlineBadge = document.getElementById('online-count');
+    if (onlineBadge && !onlineBadge.dataset.presenceHook) {
+        onlineBadge.dataset.presenceHook = '1';
+        onlineBadge.addEventListener('mouseenter', askPresence);
+        onlineBadge.addEventListener('touchstart', askPresence, { passive: true });
+    }
+    window.addEventListener('focus', askPresence);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) askPresence(); });
+    setInterval(askPresence, 20000);
 
     // Node events
     ws.on('node:create', (__ev) => { const { node, userId } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
@@ -2556,9 +2592,16 @@ function initWebSocket() {
     });
 
     // Cursor events (Stage 2)
-    ws.on('cursor:move', ({ userId, username, color, x, y, touch }) => {
-        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
-        updateRemoteCursor(userId, username, color, x, y, touch);
+    ws.on('cursor:move', (__ev) => {
+        const { userId, username, color, x, y, touch } = __ev;
+        // Key cursors by DEVICE: same account on phone + PC = two cursors,
+        // and each device only ignores its own events.
+        const key = __ev.clientId || __ev.socketId || userId;
+        const isSelfDevice = __ev.clientId
+            ? __ev.clientId === DEVICE_ID
+            : (__ev.socketId ? __ev.socketId === ws.id : userId === state.user?._id);
+        if (isSelfDevice) return;
+        updateRemoteCursor(key, userId, username, color, x, y, touch);
     });
 
     // Remote editing indicator (Stage 2)
@@ -2572,9 +2615,10 @@ function initWebSocket() {
     });
 
     ws.on('user:leave', ({ userId }) => {
-        // Remove cursor
-        const c = state.remoteCursors.get(userId);
-        if (c) { c.el.remove(); state.remoteCursors.delete(userId); }
+        // Remove every device cursor of that account
+        state.remoteCursors.forEach((c, key) => {
+            if (c && c.userId === userId) { c.el.remove(); state.remoteCursors.delete(key); }
+        });
         state.onlineUsers.delete(userId);
         updateOnlineTooltip();
     });
@@ -2955,8 +2999,8 @@ function emitCursor(sx, sy) {
     });
 }
 
-function updateRemoteCursor(userId, username, color, wx, wy, touch) {
-    let entry = state.remoteCursors.get(userId);
+function updateRemoteCursor(key, userId, username, color, wx, wy, touch) {
+    let entry = state.remoteCursors.get(key);
     if (!entry) {
         const el = document.createElement('div');
         const c = color || '#4ade80';
@@ -2970,9 +3014,10 @@ function updateRemoteCursor(userId, username, color, wx, wy, touch) {
             </svg>`)
             + `<div class="remote-cursor-label" style="background:${c}">${escHtml(username||'user')}</div>`;
         cursorsLayer.appendChild(el);
-        entry = { el, worldX: wx, worldY: wy };
-        state.remoteCursors.set(userId, entry);
-        state.onlineUsers.set(userId, { userId, username, color });
+        entry = { el, worldX: wx, worldY: wy, userId: userId, clientId: key };
+        state.remoteCursors.set(key, entry);
+        // Never list yourself as another participant
+        if (userId !== state.user?._id) state.onlineUsers.set(userId, { userId, username, color });
     }
     entry.worldX = wx;
     entry.worldY = wy;
@@ -2996,7 +3041,9 @@ function updateAllCursorPositions() {
 // ── Online presence tooltip (Stage 2) ──
 function updateOnlineTooltip() {
     const count = $('online-num');
-    if (count) count.textContent = state.onlineUsers.size + 1; // +self
+    // Count DEVICES, not people: 2 people where one is on phone + PC => 3
+    const deviceTotal = (window.SpaceDevices && window.SpaceDevices.total) || 0;
+    if (count) count.textContent = deviceTotal || (state.onlineUsers.size + 1);
     const tooltipEl = $('online-tooltip');
     if (!tooltipEl) return;
     const list = [...state.onlineUsers.values()];

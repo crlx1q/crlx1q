@@ -768,7 +768,8 @@ function sessionsFrom(users) {
         (u.devices || []).forEach(function (d) {
             out.push({
                 userId: u.userId, username: u.username, color: u.color,
-                socketId: d.socketId, kind: d.kind, os: d.os, browser: d.browser, label: d.label
+                clientId: d.clientId, socketId: d.socketId, kind: d.kind, os: d.os,
+                browser: d.browser, tabs: d.tabs, label: d.label
             });
         });
     });
@@ -786,8 +787,14 @@ async function presenceFor(spaceId) {
             map.set(uid, { userId: uid, username: s.data.username, color: s.data.color, devices: [] });
         }
         const dev = s.data?.device || deviceFromUA(s.handshake?.headers?.['user-agent']);
-        map.get(uid).devices.push({
-            socketId: s.id, kind: dev.kind, os: dev.os, browser: dev.browser,
+        const cid = String(s.data?.clientId || s.id);
+        const bucket = map.get(uid);
+        // Extra tabs / reconnects from the same device share a clientId,
+        // so they collapse into ONE device row (no more duplicate 'Chrome').
+        const dup = bucket.devices.find(d => d.clientId === cid);
+        if (dup) { dup.tabs = (dup.tabs || 1) + 1; dup.socketId = s.id; continue; }
+        bucket.devices.push({
+            clientId: cid, socketId: s.id, kind: dev.kind, os: dev.os, browser: dev.browser, tabs: 1,
             label: (s.data.username || 'user') + ' ' + dev.kind
         });
     }
@@ -815,6 +822,19 @@ io.use((socket, next) => {
         socket.data.userId = p.userId;
         socket.data.username = p.username;
         socket.data.device = deviceFromUA(socket.handshake?.headers?.['user-agent']);
+        // Stable device identity (survives reloads / reconnects / extra tabs)
+        socket.data.clientId = String(socket.handshake?.auth?.clientId || socket.handshake?.query?.clientId || socket.id).slice(0, 64);
+        // On-demand presence refresh: kills stale device lists after sleep/reconnect
+        socket.on('space:presence', async (payload) => {
+            try {
+                const sid = (payload && payload.spaceId) || socket.currentSpace || socket.spaceId;
+                if (!sid) return;
+                const rooms = socket.rooms ? [...socket.rooms] : [];
+                if (!rooms.some(r => String(r).includes(String(sid)))) return;
+                const users = await presenceFor(sid);
+                socket.emit('space:online', { count: users.length, users, sessions: sessionsFrom(users) });
+            } catch (e) {}
+        });
         next();
     } catch { next(new Error('Invalid token')); }
 });
@@ -871,36 +891,36 @@ io.on('connection', (socket) => {
 
     socket.on('node:create', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:create', { ...data, userId: socket.userId, socketId: socket.id });
+        socket.to(data.spaceId).emit('node:create', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
     socket.on('node:move', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:move', { ...data, userId: socket.userId, socketId: socket.id });
+        socket.to(data.spaceId).emit('node:move', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
     socket.on('node:update', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:update', { ...data, userId: socket.userId, socketId: socket.id });
+        socket.to(data.spaceId).emit('node:update', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
     socket.on('node:delete', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:delete', { ...data, userId: socket.userId, socketId: socket.id });
+        socket.to(data.spaceId).emit('node:delete', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
     socket.on('edge:create', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('edge:create', { ...data, userId: socket.userId, socketId: socket.id });
+        socket.to(data.spaceId).emit('edge:create', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
     socket.on('edge:delete', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('edge:delete', { ...data, userId: socket.userId, socketId: socket.id });
+        socket.to(data.spaceId).emit('edge:delete', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
     // Freehand drawing — broadcast finished strokes / erasures to the room
     socket.on('draw:create', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('draw:create', { ...data, userId: socket.userId, socketId: socket.id });
+        socket.to(data.spaceId).emit('draw:create', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
     socket.on('draw:delete', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('draw:delete', { ...data, userId: socket.userId, socketId: socket.id });
+        socket.to(data.spaceId).emit('draw:delete', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
     socket.on('cursor:move', (data) => {
         // cursors allowed for everyone (incl. readers)
@@ -946,11 +966,11 @@ io.on('connection', (socket) => {
     // Stage 2: Remote editing indicators
     socket.on('node:editing', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:editing', { ...data, userId: socket.userId, socketId: socket.id });
+        socket.to(data.spaceId).emit('node:editing', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
     socket.on('node:editing-stop', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:editing-stop', { ...data, userId: socket.userId, socketId: socket.id });
+        socket.to(data.spaceId).emit('node:editing-stop', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
 
     socket.on('disconnect', async () => {
