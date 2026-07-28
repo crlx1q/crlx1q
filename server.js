@@ -354,13 +354,19 @@ ${ctxLines}
 Return JSON only, matching the schema:
 - "reply": a short human-readable summary of what you did or your answer (user's language). Always required.
 - "actions": optional array (max 12). Each item has a "type":
-   • create_note  → fields: title, content, color(optional: white|blue|green|purple|yellow|red)
+   • create_note  → fields: title, content (REQUIRED, non-empty — the real body text of the note), color(optional: white|blue|green|purple|yellow|red)
    • update_note  → fields: id (existing node id from the list above), and any of title/content/color
    • connect      → fields: from, to (both existing node ids from the list above)
 Guidelines:
 - Only include actions when the user asks you to build/modify the canvas. Otherwise return an empty actions array and just answer in "reply".
 - Never invent ids; only use ids present in the list above for update_note/connect.
-- Keep notes concise and useful. Prefer a few well-structured notes over many tiny ones.`;
+- Keep notes concise and useful. Prefer a few well-structured notes over many tiny ones.
+- EVERY create_note MUST include a non-empty "content": the actual body of the note
+  (description, explanation or list). A note with a title only is a BUG — never do that.
+- "title" is a short name (2-6 words). All the details go into "content", not the title.
+- If the user asks for a note about something "with a description", write the description
+  into "content" in the same language the user used.
+- update_note follows the same rule when the user asks to fill in or extend a note.`;
 
     const genBody = {
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -381,6 +387,9 @@ Guidelines:
                                 type:    { type: 'string' },
                                 title:   { type: 'string' },
                                 content: { type: 'string' },
+                                body:    { type: 'string' },
+                                text:    { type: 'string' },
+                                description: { type: 'string' },
                                 color:   { type: 'string' },
                                 id:      { type: 'string' },
                                 from:    { type: 'string' },
@@ -410,7 +419,18 @@ Guidelines:
         try {
             if (type === 'create_note') {
                 const title = String(a.title || 'Note').slice(0, 120);
-                const content = String(a.content || '').slice(0, 5000);
+                let content = String(a.content || a.body || a.text || a.description || '').slice(0, 5000);
+                if (!content.trim()) {
+                    // Model returned a title with no body — ask once for the body text.
+                    try {
+                        const fb = await callGeminiServer({
+                            systemInstruction: { parts: [{ text: 'You write the BODY text of a sticky note. Plain text only, no JSON, no markdown headings, 1-6 short lines, same language as the request.' }] },
+                            contents: [{ role: 'user', parts: [{ text: 'Request: ' + userText + '\nNote title: ' + title + '\nWrite the note body:' }] }],
+                            generationConfig: { temperature: 0.6, maxOutputTokens: 512 }
+                        });
+                        content = String((fb && (fb.text || fb.reply)) || '').trim().slice(0, 5000);
+                    } catch (e) { /* keep going, note is still created */ }
+                }
                 const color = AI_NODE_COLORS.has(a.color) ? a.color : 'purple';
                 const pos = {
                     x: Math.round(viewport.x + (idx % 4) * 240 - 120),
@@ -429,7 +449,9 @@ Guidelines:
                 if (!/^[a-f0-9]{24}$/.test(String(a.id || ''))) continue;
                 const upd = {};
                 if (a.title != null)   upd.title   = String(a.title).slice(0, 120);
-                if (a.content != null) upd.content = String(a.content).slice(0, 5000);
+                const newContent = a.content != null ? a.content
+                    : (a.body != null ? a.body : (a.text != null ? a.text : a.description));
+                if (newContent != null) upd.content = String(newContent).slice(0, 5000);
                 if (AI_NODE_COLORS.has(a.color)) upd.color = a.color;
                 if (!Object.keys(upd).length) continue;
                 const node = await Node.findOneAndUpdate(
@@ -714,15 +736,70 @@ const io = new SocketServer(httpServer, {
 // ──────────────────────────────────────────────────────
 // Live presence is derived from the actual sockets in a room (deduped by
 // userId) so multiple tabs count once and stale "ghosts" can't accumulate.
+// Human readable device label from a User-Agent string.
+function deviceFromUA(ua) {
+    var s = String(ua || '');
+    var kind = 'PC';
+    if (/iPhone|iPod|Windows Phone/i.test(s) || (/Android/i.test(s) && /Mobile/i.test(s))) kind = 'Mobile';
+    else if (/iPad|Tablet|PlayBook|Silk/i.test(s) || (/Android/i.test(s) && !/Mobile/i.test(s))) kind = 'Tablet';
+    var os = '';
+    if (/iPhone|iPod/i.test(s)) os = 'iPhone';
+    else if (/iPad/i.test(s)) os = 'iPad';
+    else if (/Android/i.test(s)) os = 'Android';
+    else if (/Windows NT/i.test(s)) os = 'Windows';
+    else if (/Mac OS X|Macintosh/i.test(s)) os = 'macOS';
+    else if (/CrOS/i.test(s)) os = 'ChromeOS';
+    else if (/Linux/i.test(s)) os = 'Linux';
+    var browser = '';
+    if (/Edg\//i.test(s)) browser = 'Edge';
+    else if (/OPR\/|Opera/i.test(s)) browser = 'Opera';
+    else if (/YaBrowser/i.test(s)) browser = 'Yandex';
+    else if (/SamsungBrowser/i.test(s)) browser = 'Samsung';
+    else if (/Firefox\//i.test(s)) browser = 'Firefox';
+    else if (/Chrome\//i.test(s)) browser = 'Chrome';
+    else if (/Safari\//i.test(s)) browser = 'Safari';
+    return { kind: kind, os: os, browser: browser };
+}
+
+// Flat list of every live session: one entry per connected device/tab.
+function sessionsFrom(users) {
+    var out = [];
+    (users || []).forEach(function (u) {
+        (u.devices || []).forEach(function (d) {
+            out.push({
+                userId: u.userId, username: u.username, color: u.color,
+                socketId: d.socketId, kind: d.kind, os: d.os, browser: d.browser, label: d.label
+            });
+        });
+    });
+    return out;
+}
+
 async function presenceFor(spaceId) {
     let sockets = [];
     try { sockets = await io.in(spaceId).fetchSockets(); } catch { sockets = []; }
     const map = new Map();
     for (const s of sockets) {
         const uid = s.data?.userId;
-        if (uid && !map.has(uid)) {
-            map.set(uid, { userId: uid, username: s.data.username, color: s.data.color });
+        if (!uid) continue;
+        if (!map.has(uid)) {
+            map.set(uid, { userId: uid, username: s.data.username, color: s.data.color, devices: [] });
         }
+        const dev = s.data?.device || deviceFromUA(s.handshake?.headers?.['user-agent']);
+        map.get(uid).devices.push({
+            socketId: s.id, kind: dev.kind, os: dev.os, browser: dev.browser,
+            label: (s.data.username || 'user') + ' ' + dev.kind
+        });
+    }
+    // Same device kind twice on one account -> PC, PC 2, PC 3 …
+    for (const u of map.values()) {
+        const seen = new Map();
+        u.devices.forEach(function (d) {
+            const n = (seen.get(d.kind) || 0) + 1;
+            seen.set(d.kind, n);
+            if (n > 1) { d.kind = d.kind + ' ' + n; d.label = d.label + ' ' + n; }
+        });
+        u.deviceCount = u.devices.length;
     }
     return [...map.values()];
 }
@@ -737,6 +814,7 @@ io.use((socket, next) => {
         // Mirror into socket.data so presenceFor() (RemoteSocket) can read them
         socket.data.userId = p.userId;
         socket.data.username = p.username;
+        socket.data.device = deviceFromUA(socket.handshake?.headers?.['user-agent']);
         next();
     } catch { next(new Error('Invalid token')); }
 });
@@ -781,11 +859,11 @@ io.on('connection', (socket) => {
             chat: chatHistory.map(serializeChatMsg),
             chatMode: space.chatMode || 'panel',
             chatPos: space.chatPos || { x: 80, y: 80 },
-            onlineCount: users.length, users
+            onlineCount: users.length, users, sessions: sessionsFrom(users)
         });
 
         // Broadcast updated presence to the whole room
-        io.to(spaceId).emit('space:online', { count: users.length, users });
+        io.to(spaceId).emit('space:online', { count: users.length, users, sessions: sessionsFrom(users) });
     });
 
     // Readers may observe (cursors) but cannot mutate — drop their write broadcasts
@@ -793,36 +871,36 @@ io.on('connection', (socket) => {
 
     socket.on('node:create', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:create', { ...data, userId: socket.userId });
+        socket.to(data.spaceId).emit('node:create', { ...data, userId: socket.userId, socketId: socket.id });
     });
     socket.on('node:move', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:move', { ...data, userId: socket.userId });
+        socket.to(data.spaceId).emit('node:move', { ...data, userId: socket.userId, socketId: socket.id });
     });
     socket.on('node:update', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:update', { ...data, userId: socket.userId });
+        socket.to(data.spaceId).emit('node:update', { ...data, userId: socket.userId, socketId: socket.id });
     });
     socket.on('node:delete', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:delete', { ...data, userId: socket.userId });
+        socket.to(data.spaceId).emit('node:delete', { ...data, userId: socket.userId, socketId: socket.id });
     });
     socket.on('edge:create', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('edge:create', { ...data, userId: socket.userId });
+        socket.to(data.spaceId).emit('edge:create', { ...data, userId: socket.userId, socketId: socket.id });
     });
     socket.on('edge:delete', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('edge:delete', { ...data, userId: socket.userId });
+        socket.to(data.spaceId).emit('edge:delete', { ...data, userId: socket.userId, socketId: socket.id });
     });
     // Freehand drawing — broadcast finished strokes / erasures to the room
     socket.on('draw:create', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('draw:create', { ...data, userId: socket.userId });
+        socket.to(data.spaceId).emit('draw:create', { ...data, userId: socket.userId, socketId: socket.id });
     });
     socket.on('draw:delete', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('draw:delete', { ...data, userId: socket.userId });
+        socket.to(data.spaceId).emit('draw:delete', { ...data, userId: socket.userId, socketId: socket.id });
     });
     socket.on('cursor:move', (data) => {
         // cursors allowed for everyone (incl. readers)
@@ -868,11 +946,11 @@ io.on('connection', (socket) => {
     // Stage 2: Remote editing indicators
     socket.on('node:editing', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:editing', { ...data, userId: socket.userId });
+        socket.to(data.spaceId).emit('node:editing', { ...data, userId: socket.userId, socketId: socket.id });
     });
     socket.on('node:editing-stop', (data) => {
         if (!canWrite()) return;
-        socket.to(data.spaceId).emit('node:editing-stop', { ...data, userId: socket.userId });
+        socket.to(data.spaceId).emit('node:editing-stop', { ...data, userId: socket.userId, socketId: socket.id });
     });
 
     socket.on('disconnect', async () => {
@@ -880,7 +958,7 @@ io.on('connection', (socket) => {
         if (spaceId) {
             // Socket has already left its rooms here, so presence excludes it.
             const users = await presenceFor(spaceId);
-            io.to(spaceId).emit('space:online', { count: users.length, users });
+            io.to(spaceId).emit('space:online', { count: users.length, users, sessions: sessionsFrom(users) });
             // Only signal "leave" if this user has no other live sockets here
             if (!users.some(u => u.userId === socket.userId)) {
                 io.to(spaceId).emit('user:leave', { userId: socket.userId });

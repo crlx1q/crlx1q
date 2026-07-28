@@ -2451,19 +2451,26 @@ function initWebSocket() {
         updateOnlineTooltip();
     });
 
+    // Per-device presence (admin PC / admin Mobile …), rendered by device-presence.js
+    ws.on('space:online', (p) => {
+        try {
+            if (window.SpaceDevices) window.SpaceDevices.update(p, { selfId: ws.id, selfUserId: state.user?._id });
+        } catch (e) {}
+    });
+
     // Node events
-    ws.on('node:create', ({ node, userId }) => {
-        if (userId === state.user?._id) return;
+    ws.on('node:create', (__ev) => { const { node, userId } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         createNodeElement(node, true);
         updateCanvasHint();
     });
-    ws.on('node:move', ({ nodeId, x, y, userId }) => {
-        if (userId === state.user?._id) return;
+    ws.on('node:move', (__ev) => { const { nodeId, x, y, userId } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         const n = state.nodes.get(nodeId);
         if (n) { n.data.position={x,y}; n.el.style.left=x+'px'; n.el.style.top=y+'px'; updateEdgesForNode(nodeId); }
     });
-    ws.on('node:update', ({ nodeId, updates, userId }) => {
-        if (userId === state.user?._id) return;
+    ws.on('node:update', (__ev) => { const { nodeId, updates, userId } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         if (!updates) return;
         // Folder filing / ejecting (node moves between canvas and a folder)
         if (updates.parentId !== undefined) {
@@ -2520,47 +2527,47 @@ function initWebSocket() {
             updateEdgesForNode(nodeId);
         }
     });
-    ws.on('node:delete', ({ nodeId, userId }) => {
-        if (userId === state.user?._id) return;
+    ws.on('node:delete', (__ev) => { const { nodeId, userId } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         const n = state.nodes.get(nodeId);
         if (n) { n.el.remove(); state.nodes.delete(nodeId); }
         updateCanvasHint();
     });
 
     // Edge events
-    ws.on('edge:create', ({ edge, userId }) => {
-        if (userId === state.user?._id) return;
+    ws.on('edge:create', (__ev) => { const { edge, userId } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         createEdgeElement(edge, true);
     });
-    ws.on('edge:delete', ({ edgeId, userId }) => {
-        if (userId === state.user?._id) return;
+    ws.on('edge:delete', (__ev) => { const { edgeId, userId } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         const e = state.edges.get(edgeId);
         if (e) { e.el.remove(); state.edges.delete(edgeId); physics.edges.delete(edgeId); }
     });
 
     // Drawing events
-    ws.on('draw:create', ({ stroke, userId }) => {
-        if (userId === state.user?._id) return;
+    ws.on('draw:create', (__ev) => { const { stroke, userId } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         if (stroke) createStrokeElement(stroke);
     });
-    ws.on('draw:delete', ({ strokeId, userId }) => {
-        if (userId === state.user?._id) return;
+    ws.on('draw:delete', (__ev) => { const { strokeId, userId } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         deleteStroke(strokeId, false);
     });
 
     // Cursor events (Stage 2)
     ws.on('cursor:move', ({ userId, username, color, x, y, touch }) => {
-        if (userId === state.user?._id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         updateRemoteCursor(userId, username, color, x, y, touch);
     });
 
     // Remote editing indicator (Stage 2)
-    ws.on('node:editing', ({ nodeId, userId, color }) => {
-        if (userId === state.user?._id) return;
+    ws.on('node:editing', (__ev) => { const { nodeId, userId, color } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         setRemoteEditing(nodeId, userId, color);
     });
-    ws.on('node:editing-stop', ({ nodeId, userId }) => {
-        if (userId === state.user?._id) return;
+    ws.on('node:editing-stop', (__ev) => { const { nodeId, userId } = __ev; if (__ev && __ev.socketId && __ev.socketId === ws.id) return;
+        if ((typeof __ev !== 'undefined' && __ev && __ev.socketId) ? __ev.socketId === ws.id : (userId === state.user?._id)) return;
         clearRemoteEditing(nodeId);
     });
 
