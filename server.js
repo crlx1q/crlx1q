@@ -923,9 +923,14 @@ io.on('connection', (socket) => {
         socket.to(data.spaceId).emit('draw:delete', { ...data, userId: socket.userId, socketId: socket.id, clientId: socket.data?.clientId });
     });
     socket.on('cursor:move', (data) => {
-        // cursors allowed for everyone (incl. readers)
+        // Cursors are allowed for everyone (incl. readers).
+        // socketId/clientId/device let each DEVICE render as its own cursor,
+        // so one account on phone + PC shows two cursors instead of sharing one.
         socket.to(data.spaceId).emit('cursor:move', {
-            ...data, userId: socket.userId, username: socket.username
+            ...data, userId: socket.userId, username: socket.username,
+            socketId: socket.id,
+            clientId: socket.data?.clientId,
+            device: socket.data?.device
         });
     });
 

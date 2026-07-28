@@ -2601,7 +2601,7 @@ function initWebSocket() {
             ? __ev.clientId === DEVICE_ID
             : (__ev.socketId ? __ev.socketId === ws.id : userId === state.user?._id);
         if (isSelfDevice) return;
-        updateRemoteCursor(key, userId, username, color, x, y, touch);
+        updateRemoteCursor(key, userId, username, color, x, y, touch, __ev);
     });
 
     // Remote editing indicator (Stage 2)
@@ -2995,15 +2995,57 @@ function emitCursor(sx, sy) {
         userId: state.user._id,
         username: state.user.username,
         color: state.user.color || CURSOR_COLORS[0],
+        clientId: DEVICE_ID,
         touch: IS_TOUCH
     });
 }
 
-function updateRemoteCursor(key, userId, username, color, wx, wy, touch) {
+// Device icons for cursor labels (same stroke family as the rest of the UI)
+const CURSOR_DEVICE_ICONS = {
+    PC:     '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
+    Mobile: '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',
+    Tablet: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M12 18h.01"/>'
+};
+
+// Which device is this cursor coming from? (server device info, else touch hint)
+function cursorDeviceKind(ev, touch) {
+    const raw = String((ev && (ev.kind || (ev.device && ev.device.kind))) || '').trim();
+    if (/^mobile/i.test(raw)) return 'Mobile';
+    if (/^tablet/i.test(raw)) return 'Tablet';
+    if (raw) return 'PC';
+    return touch ? 'Mobile' : 'PC';
+}
+
+function cursorDeviceIcon(kind) {
+    const p = CURSOR_DEVICE_ICONS[kind] || CURSOR_DEVICE_ICONS.PC;
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+        + 'stroke-linecap="round" stroke-linejoin="round" '
+        + 'style="width:9px;height:9px;margin-right:4px;vertical-align:-1px;opacity:.85">' + p + '</svg>';
+}
+
+// Same account on several devices -> same base color, visibly different shade,
+// so two cursors of one user never look like a single one.
+function deviceCursorColor(hex, key) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+    if (!m) return hex || '#4ade80';
+    const n = parseInt(m[1], 16);
+    let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const s = String(key || '');
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 99991;
+    const variant = h % 3;                       // 0 = as-is, 1 = lighter, 2 = deeper
+    const mix = (v, t, f) => Math.round(v + (t - v) * f);
+    if (variant === 1) { r = mix(r, 255, 0.42); g = mix(g, 255, 0.42); b = mix(b, 255, 0.42); }
+    if (variant === 2) { r = mix(r, 0, 0.34);   g = mix(g, 0, 0.34);   b = mix(b, 0, 0.34); }
+    return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
+}
+
+function updateRemoteCursor(key, userId, username, color, wx, wy, touch, ev) {
     let entry = state.remoteCursors.get(key);
     if (!entry) {
         const el = document.createElement('div');
-        const c = color || '#4ade80';
+        const kind = cursorDeviceKind(ev, touch);
+        const c = deviceCursorColor(color || '#4ade80', key);
         // Shape reflects the SENDER's device: touch → presence dot, desktop → arrow
         el.className = 'remote-cursor' + (touch ? ' mobile' : '');
         el.style.setProperty('--cursor-color', c);
@@ -3012,9 +3054,9 @@ function updateRemoteCursor(key, userId, username, color, wx, wy, touch) {
             : `<svg class="remote-cursor-arrow" viewBox="0 0 12 18" width="12" height="18">
                 <path d="M0,0 L0,15 L4,11 L7,17 L9,16 L6,10 L11,10 Z" fill="${c}"/>
             </svg>`)
-            + `<div class="remote-cursor-label" style="background:${c}">${escHtml(username||'user')}</div>`;
+            + `<div class="remote-cursor-label" style="background:${c}">${cursorDeviceIcon(kind)}${escHtml(username||'user')}</div>`;
         cursorsLayer.appendChild(el);
-        entry = { el, worldX: wx, worldY: wy, userId: userId, clientId: key };
+        entry = { el, worldX: wx, worldY: wy, userId: userId, clientId: key, kind: kind };
         state.remoteCursors.set(key, entry);
         // Never list yourself as another participant
         if (userId !== state.user?._id) state.onlineUsers.set(userId, { userId, username, color });
