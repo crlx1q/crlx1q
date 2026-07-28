@@ -3047,6 +3047,19 @@ function updateOnlineTooltip() {
     const tooltipEl = $('online-tooltip');
     if (!tooltipEl) return;
     const list = [...state.onlineUsers.values()];
+    // Tab list (like Minecraft): every participant AND every device of theirs,
+    // and I am always in the list too. Falls back to the legacy list below.
+    const dp = window.SpaceDevices;
+    if (dp && dp.renderTooltip && dp.renderTooltip(tooltipEl, {
+        selfUserId: state.user?._id,
+        selfUsername: state.user?.username || 'you',
+        selfClientId: DEVICE_ID,
+        selfSocketId: ws && ws.id,
+        others: list
+    })) {
+        if (state.teamChatOpen) renderTeamPresence();
+        return;
+    }
     tooltipEl.innerHTML = list.map(u =>
         `<div class="online-user-item"><div class="online-user-dot" style="background:${u.color||'#4ade80'}"></div>${escHtml(u.username)}</div>`
     ).join('') || '<div class="online-user-item" style="color:var(--dim)">Only you</div>';
