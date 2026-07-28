@@ -1,0 +1,49 @@
+name: space-presence-patch4
+
+on:
+  push:
+    branches:
+      - fix/space-presence-4
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/space-presence-4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Apply patch
+        run: node tools/space-presence-patch4.js
+
+      - name: Syntax check
+        run: |
+          node --check server.js
+          node --check public/space.js
+          node --check public/device-presence.js
+          node --check public/sw.js
+
+      - name: Verify redirect intact
+        run: grep -q "space.crlx1q.com" server.js
+
+      - name: Verify absolute script path
+        run: grep -q 'src="/device-presence.js?v=4"' public/space.html
+
+      - name: Remove one-shot runner
+        run: |
+          rm -f tools/space-presence-patch4.js
+          rm -f .github/workflows/space-presence-patch4.yml
+
+      - name: Commit
+        run: |
+          git config user.name "space-patch-bot"
+          git config user.email "space-patch-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(space): absolute presence script path (canvas deep links) + colored dots and brighter nicknames"
+          git push origin HEAD:fix/space-presence-4
