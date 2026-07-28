@@ -1,7 +1,7 @@
 // ═════════════════════════════════════════════════════════════
 //  DEVICE PRESENCE — tab list
 //  Every participant and every device, myself always included.
-//  Row = colored dot (user color) + bright nickname + dim device info.
+//  Row = colored dot (user color) + nickname + device kind (PC / Mobile).
 //  Every device counts as +1 in the online badge.
 // ═════════════════════════════════════════════════════════════
 (function () {
@@ -127,16 +127,17 @@
     }
 
     function rowHTML(r) {
-        var sub = [r.kind, r.os, r.browser].filter(Boolean).join(' ');
         var col = colorFor(r);
-        return '<div class="online-user-item dp-row" style="display:flex;align-items:center;gap:8px;">' +
+        // Only the device kind (PC / Mobile / Tablet) — no OS/browser, so long
+        // nicknames always fit.
+        var kind = String(r.kind || 'PC');
+        return '<div class="online-user-item dp-row" style="display:flex;align-items:center;gap:8px;min-width:0;">' +
                 '<span class="online-user-dot" style="background:' + esc(col) + ';flex:0 0 auto;"></span>' +
-                '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
-                    '<span style="color:#e8e8e8;font-weight:500;">' + esc(r.username) + '</span>' +
-                    (r.self ? '<span style="opacity:.45"> (you)</span>' : '') +
+                '<span style="color:#e8e8e8;font-weight:500;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+                    esc(r.username) + (r.self ? '<span style="opacity:.45"> (you)</span>' : '') +
                 '</span>' +
-                svg(r.kind) +
-                '<span style="opacity:.45;flex:0 0 auto;font-size:11px;">' + esc(sub) + '</span>' +
+                svg(kind) +
+                '<span style="opacity:.5;flex:0 0 auto;white-space:nowrap;">' + esc(kind) + '</span>' +
             '</div>';
     }
 
