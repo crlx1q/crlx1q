@@ -290,8 +290,11 @@ function applyReadOnly(ro) {
 
 // Enable/disable contenteditable fields inside a node element
 function setNodeEditable(el, editable) {
-    el.querySelectorAll('[contenteditable]').forEach(c => {
-        c.setAttribute('contenteditable', editable ? 'true' : 'false');
+    el.querySelectorAll('.node-title, .node-body').forEach(c => {
+        // On phones, keep the rendered note selectable without opening the keyboard
+        // or replacing its DOM during a long press. The pencil opens the editor.
+        const touchPreview = c.matches('.node-body') && window.matchMedia('(pointer: coarse)').matches;
+        c.setAttribute('contenteditable', editable && !touchPreview ? 'true' : 'false');
     });
 }
 
@@ -540,10 +543,12 @@ window.addEventListener('mouseup', onCanvasMouseup);
 
 // Touch
 let lastTouchDist = null, lastTouchMid = null;
+let nativeTouchGesture = false;
 const touchDrags = new Map(); // touch.identifier → { nodeId, offX, offY, moved, start }
 canvasArea.addEventListener('touchstart', onTouchStart, { passive: false });
 canvasArea.addEventListener('touchmove',  onTouchMove,  { passive: false });
 canvasArea.addEventListener('touchend',   onTouchEnd);
+canvasArea.addEventListener('touchcancel', onTouchEnd);
 
 // Which node (if any) is under a touch point
 function nodeIdAtPoint(clientX, clientY) {
@@ -553,6 +558,13 @@ function nodeIdAtPoint(clientX, clientY) {
 }
 
 function onTouchStart(e) {
+    if (nativeTouchGesture) return;
+    if (!touchDrags.size && e.touches.length === e.changedTouches.length &&
+        (state.currentTool === 'select' || state.readOnly) &&
+        e.target.closest('.node-body, .node-title, .file-txt-content, [contenteditable], button, a, audio, video')) {
+        nativeTouchGesture = true;
+        return;
+    }
     // Multi-touch node dragging (tablets): each finger on a note drags it (up to 3)
     if (state.currentTool === 'select' && !state.readOnly) {
         const rect = canvasArea.getBoundingClientRect();
@@ -593,6 +605,7 @@ function onTouchStart(e) {
     }
 }
 function onTouchMove(e) {
+    if (nativeTouchGesture) return;
     e.preventDefault();
     // Drive any active per-finger node drags
     if (touchDrags.size) {
@@ -628,6 +641,10 @@ function onTouchMove(e) {
     }
 }
 function onTouchEnd(e) {
+    if (nativeTouchGesture) {
+        if (!e.touches.length) nativeTouchGesture = false;
+        return;
+    }
     // Finish any per-finger node drags → persist their new positions
     if (touchDrags.size && e && e.changedTouches) {
         for (const t of e.changedTouches) {
@@ -819,6 +836,7 @@ canvasArea.addEventListener('dblclick', (e) => {
 });
 
 canvasArea.addEventListener('contextmenu', (e) => {
+    if (isNativeTextMenu(e)) return;
     e.preventDefault();
     showContextMenu(e.clientX, e.clientY, null);
 });
@@ -908,6 +926,7 @@ function createNodeElement(data, animate = false) {
 
     el.addEventListener('mousedown', onNodeMousedown);
     el.addEventListener('contextmenu', (e) => {
+        if (isNativeTextMenu(e)) return;
         e.preventDefault(); e.stopPropagation();
         if (!state.selected.has(id)) {
             state.selected.forEach(s => deselectNode(s));
@@ -927,7 +946,7 @@ function createNodeElement(data, animate = false) {
 
     nodesLayer.appendChild(el);
     state.nodes.set(id, { el, data: { ...data } });
-    if (state.readOnly) setNodeEditable(el, false);
+    setNodeEditable(el, !state.readOnly);
 }
 
 function buildNoteNodeHTML(data, createdAt) {
@@ -1143,6 +1162,11 @@ function renderFolderContents(folderId) {
             </div>`;
         const eject = row.querySelector('.folder-eject-btn:not(a)') || (state.readOnly ? null : row.querySelector('.trash-actions button'));
         if (eject && eject.textContent === 'Eject') eject.onclick = () => ejectNode(id);
+        if (d.fileRef?.r2Key) row.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            showContextMenu(e.clientX, e.clientY, id);
+        });
         listEl.appendChild(row);
     });
 }
@@ -1389,6 +1413,7 @@ function renderNodeField(node, key, value) {
 }
 
 function onNodeContentFocus(el) {
+    if (el.getAttribute('contenteditable') !== 'true') return;
     // notify others we're editing this node (Stage 2)
     const id = el.dataset.nodeId;
     if (ws && state.user) {
@@ -1416,6 +1441,7 @@ function onNodeTitleBlur(el) {
 }
 
 function onNodeContentBlur(el) {
+    if (el.dataset.editing !== '1') return;
     const id      = el.dataset.nodeId;
     const content = (el.innerText || '').replace(/\n$/, '');
     el.classList.toggle('empty', !content.trim());
@@ -1945,22 +1971,78 @@ function setupDragAndDrop() {
 
 let ctxTargetNode = null, ctxTargetPos = null;
 
+function isNativeTextMenu(e) {
+    return (e.pointerType === 'touch' || window.matchMedia('(pointer: coarse)').matches) &&
+        !!e.target.closest('.node-body, .node-title, .file-txt-content');
+}
+
 function showContextMenu(x, y, nodeId) {
     ctxTargetNode = nodeId;
     const rect = canvasArea.getBoundingClientRect();
     ctxTargetPos  = screenToWorld(x - rect.left, y - rect.top);
-    const hasSelected = state.selected.size > 0;
+    const isFiled = state.filed.has(nodeId);
+    const hasSelected = !isFiled && state.selected.size > 0;
     const ro = state.readOnly;
-    $('ctx-node-section').style.display  = (nodeId && !ro) ? '' : 'none';
+    const file = (state.nodes.get(nodeId)?.data || state.filed.get(nodeId))?.fileRef;
+    $('ctx-file-section').style.display = file?.r2Key ? '' : 'none';
+    const isImage = file && (/^image\//i.test(file.mimeType || '') ||
+        /^(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(file.ext || ''));
+    $('ctx-copy-image').style.display = isImage ? '' : 'none';
+    $('ctx-download-file').href = file?.r2Key
+        ? `${API_BASE}/nodes/${nodeId}/download?token=${encodeURIComponent(state.token || '')}` : '#';
+    $('ctx-node-section').style.display  = (nodeId && !ro && !isFiled) ? '' : 'none';
     $('ctx-color-section').style.display = (hasSelected && !ro) ? '' : 'none';
     $('ctx-delete-section').style.display = (hasSelected && !ro) ? '' : 'none';
     const addSection = $('ctx-add-section');
-    if (addSection) addSection.style.display = ro ? 'none' : '';
-    contextMenu.style.left = Math.min(x, window.innerWidth  - 200) + 'px';
-    contextMenu.style.top  = Math.min(y, window.innerHeight - 200) + 'px';
+    if (addSection) addSection.style.display = (ro || isFiled) ? 'none' : '';
     contextMenu.classList.add('show');
+    contextMenu.style.left = Math.max(8, Math.min(x, window.innerWidth - contextMenu.offsetWidth - 8)) + 'px';
+    contextMenu.style.top = Math.max(8, Math.min(y, window.innerHeight - contextMenu.offsetHeight - 8)) + 'px';
 }
 function hideContextMenu() { contextMenu.classList.remove('show'); }
+
+async function clipboardImageBlob(nodeId) {
+    const res = await apiFetch(`${API_BASE}/nodes/${nodeId}/content`);
+    if (!res.ok) throw new Error('Image download failed');
+    const blob = await res.blob();
+    if (blob.type === 'image/png') return blob;
+    // PNG is the portable clipboard format, including for JPEG/WebP/GIF sources.
+    const url = URL.createObjectURL(blob);
+    try {
+        const img = new Image();
+        img.src = url;
+        await img.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Image conversion unavailable');
+        ctx.drawImage(img, 0, 0);
+        return await new Promise((resolve, reject) => canvas.toBlob(
+            png => png ? resolve(png) : reject(new Error('Image conversion failed')), 'image/png'));
+    } finally { URL.revokeObjectURL(url); }
+}
+
+async function ctxCopyImage() {
+    const nodeId = ctxTargetNode;
+    hideContextMenu();
+    if (!nodeId) return;
+    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+        showToast('Image copying is unavailable in this browser — use Download', 'error');
+        return;
+    }
+    try {
+        // Start clipboard.write in the click handler, preserving Safari user activation
+        // while the authenticated image fetch and PNG conversion finish asynchronously.
+        const png = clipboardImageBlob(nodeId);
+        // Also handle rejection if the browser rejects ClipboardItem before consuming it.
+        png.catch(() => {});
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+        showToast('Image copied');
+    } catch {
+        showToast('Could not copy image — allow clipboard access or use Download', 'error');
+    }
+}
 
 function ctxEditNode()       { hideContextMenu(); if (ctxTargetNode) openNodeEditModal(ctxTargetNode); }
 function ctxPinToAI()        { hideContextMenu(); if (ctxTargetNode) pinNodeToAI(ctxTargetNode); }

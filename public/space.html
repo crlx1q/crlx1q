@@ -410,6 +410,16 @@
 
 <!-- ══════════════ CONTEXT MENU ══════════════ -->
 <div id="context-menu">
+    <div class="ctx-section" id="ctx-file-section" style="display:none">
+        <button type="button" class="ctx-item" id="ctx-copy-image" onclick="ctxCopyImage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="9" y="9" width="13" height="13"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy image
+        </button>
+        <a class="ctx-item" id="ctx-download-file" href="#" onclick="hideContextMenu()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M12 3v12m-5-5 5 5 5-5"/></svg>
+            Download file
+        </a>
+    </div>
     <div class="ctx-section" id="ctx-node-section" style="display:none">
         <div class="ctx-item" onclick="ctxEditNode()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>

@@ -5,6 +5,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { pipeline } = require('stream/promises');
 
 // ──────────────────────────────────────────────────────
 // SPACE-specific dependencies
@@ -1950,7 +1951,7 @@ async function handleRequest(req, res) {
     // FILE DOWNLOAD — proper filename via redirect
     // ══════════════════════════════════════════════════
 
-    const downloadMatch = url.match(/^\/api\/space\/nodes\/([a-f0-9]+)\/download$/);
+    const downloadMatch = url.match(/^\/api\/space\/nodes\/([a-f0-9]+)\/(download|content)$/);
     if (downloadMatch && method === 'GET') {
         // Download links are opened via direct navigation (no Authorization header),
         // so accept the JWT via a ?token= query param as a fallback.
@@ -1973,6 +1974,17 @@ async function handleRequest(req, res) {
                 res.writeHead(403, getSecurityHeaders('application/json'));
                 return res.end(JSON.stringify({ error: 'Forbidden' }));
             }
+            if (downloadMatch[2] === 'content') {
+                // Same-origin bytes for clipboard copying: no dependency on R2 CORS.
+                const object = await r2.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: node.fileRef.r2Key }));
+                res.writeHead(200, {
+                    ...getSecurityHeaders(object.ContentType || node.fileRef.mimeType || 'application/octet-stream'),
+                    'Cache-Control': 'private, no-store',
+                    'Content-Disposition': 'attachment'
+                });
+                await pipeline(object.Body, res);
+                return;
+            }
             const originalName = node.fileRef.name || node.title || 'file';
             const safeName = originalName.replace(/[^\w.-]/g, '_');
             const cmd = new GetObjectCommand({
@@ -1984,6 +1996,7 @@ async function handleRequest(req, res) {
             res.writeHead(302, { ...getSecurityHeaders('application/json'), Location: signedUrl });
             return res.end();
         } catch (e) {
+            if (res.headersSent) { res.destroy(); return; }
             res.writeHead(500, getSecurityHeaders('application/json'));
             return res.end(JSON.stringify({ error: 'Download failed' }));
         }

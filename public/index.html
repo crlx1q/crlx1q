@@ -319,6 +319,14 @@
             text-shadow: 0 0 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7);
         }
         
+        #contact.site-footer { padding-bottom:0;overflow:hidden; }
+        .footer-wordmark { width:calc(100% - 2rem);max-width:1440px;margin:2.5rem auto -0.5rem;color:rgba(255,255,255,0.07);pointer-events:none;user-select:none; }
+        .footer-wordmark svg { display:block;width:100%;height:auto;overflow:visible; }
+        .footer-wordmark text { font-family:'Space Grotesk',sans-serif;font-weight:600;fill:currentColor; }
+        @media (max-width:768px) {
+            .footer-wordmark { width:calc(100% - 1rem);margin-top:2rem;margin-bottom:-0.2rem; }
+        }
+
         .stat-num {
             font-variant-numeric: tabular-nums;
             background: linear-gradient(180deg, #fff 0%, #888 100%);
@@ -1317,7 +1325,7 @@
     </section>
 
     <!-- Footer -->
-    <footer id="contact" class="py-12 border-t border-gray-900 z-10 relative mt-10">
+    <footer id="contact" class="site-footer py-12 border-t border-gray-900 z-10 relative mt-10">
         <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
             <div class="flex flex-col gap-3">
                 <div class="flex items-center gap-3">
@@ -1343,6 +1351,11 @@
                 <a href="https://t.me/Alisheruy" target="_blank" rel="noopener" class="text-gray-400 hover:text-white transition-colors">[ Telegram ]</a>
                 <a href="mailto:support@crlx1q.com" class="text-gray-400 hover:text-white transition-colors">[ Email ]</a>
             </div>
+        </div>
+        <div class="footer-wordmark" aria-hidden="true">
+            <svg viewBox="0 0 1200 240" focusable="false">
+                <text x="15" y="235" font-size="280" textLength="1170" lengthAdjust="spacingAndGlyphs">CRLX1Q</text>
+            </svg>
         </div>
     </footer>
 
